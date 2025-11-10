@@ -49,6 +49,9 @@ const mood = ref(3)
 const selectedQuote = ref<Quote | null>(null)
 const salt = ref(0)
 
+// 自動切り替え用タイマーID
+const rotateTimerId = ref<number | null>(null)
+
 const today = computed(() => {
   const date = new Date()
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
@@ -70,14 +73,47 @@ function pickNext() {
   pickQuote()
 }
 
+function startAutoRotate() {
+  // 10秒ごとに候補を切り替え
+  if (rotateTimerId.value !== null) return
+  rotateTimerId.value = window.setInterval(() => {
+    pickNext()
+  }, 10000)
+}
+
+function stopAutoRotate() {
+  if (rotateTimerId.value !== null) {
+    clearInterval(rotateTimerId.value)
+    rotateTimerId.value = null
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopAutoRotate()
+  } else {
+    startAutoRotate()
+  }
+}
+
 watch([mood, quotes], () => {
   salt.value = 0
   pickQuote()
 })
 
 onMounted(async () => {
+  // データの獲得
   await loadQuotes()
   pickQuote()
+  // 可視状態に応じて自動切替を開始/停止
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  if (!document.hidden) startAutoRotate()
+})
+
+onBeforeUnmount(() => {
+  // タイマーとイベントリスナーのクリーンアップ
+  stopAutoRotate()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

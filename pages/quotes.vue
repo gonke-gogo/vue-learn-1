@@ -5,48 +5,14 @@
       <button @click="showAddForm = true" class="button">新規追加</button>
     </div>
 
-    <div v-if="showAddForm || editingQuote" class="formCard">
-      <h2>{{ editingQuote ? '編集' : '新規追加' }}</h2>
-      <form @submit.prevent="handleSubmit">
-        <div class="formGroup">
-          <label for="text">名言 *</label>
-          <textarea
-            id="text"
-            v-model="form.text"
-            required
-            rows="3"
-            class="input"
-            placeholder="名言を入力してください"
-          />
-        </div>
-        <div class="formGroup">
-          <label for="author">著者</label>
-          <input
-            id="author"
-            v-model="form.author"
-            type="text"
-            class="input"
-            placeholder="著者名（任意）"
-          />
-        </div>
-        <div class="formGroup">
-          <label for="tags">タグ（カンマ区切り）</label>
-          <input
-            id="tags"
-            v-model="tagsInput"
-            type="text"
-            class="input"
-            placeholder="例: 成功, 挑戦, 努力"
-          />
-        </div>
-        <div class="formActions">
-          <button type="submit" class="button" :disabled="isLoading">
-            {{ editingQuote ? '更新' : '追加' }}
-          </button>
-          <button type="button" @click="cancelForm" class="button buttonSecondary">キャンセル</button>
-        </div>
-      </form>
-    </div>
+    <QuoteForm
+      v-if="showAddForm || editingQuote"
+      v-model="form"
+      :is-edit-mode="!!editingQuote"
+      :is-loading="isLoading"
+      @submit="handleSubmit"
+      @cancel="cancelForm"
+    />
 
     <div v-if="isLoading" class="loading">読み込み中...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
@@ -86,24 +52,15 @@ const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote
 const showAddForm = ref(false)
 const editingQuote = ref<Quote | null>(null)
 
+// フォームの値（双方向バインディング用）
 const form = ref({
   text: '',
   author: '',
   tags: [] as string[],
 })
 
-const tagsInput = ref('')
-
-function parseTags(input: string): string[] {
-  return input
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0)
-}
-
 function resetForm() {
   form.value = { text: '', author: '', tags: [] }
-  tagsInput.value = ''
   editingQuote.value = null
   showAddForm.value = false
 }
@@ -115,7 +72,6 @@ function startEdit(quote: Quote) {
     author: quote.author || '',
     tags: quote.tags || [],
   }
-  tagsInput.value = (quote.tags || []).join(', ')
   showAddForm.value = true
 }
 
@@ -123,13 +79,13 @@ function cancelForm() {
   resetForm()
 }
 
-async function handleSubmit() {
+// EventEmitterで受け取ったフォームの値のみを使用（valueのみを親に投げる要件を満たす）
+async function handleSubmit(formValue: { text: string; author?: string; tags?: string[] }) {
   try {
-    form.value.tags = parseTags(tagsInput.value)
     if (editingQuote.value) {
-      await updateQuote(editingQuote.value.id, form.value)
+      await updateQuote(editingQuote.value.id, formValue)
     } else {
-      await addQuote(form.value)
+      await addQuote(formValue)
     }
     resetForm()
   } catch (err) {
@@ -237,45 +193,6 @@ h2 {
   background-color: #dc2626;
 }
 
-.formCard {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  padding: 2rem;
-  margin-bottom: 2rem;
-}
-
-.formGroup {
-  margin-bottom: 1.5rem;
-}
-
-.formGroup label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.25rem;
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  font-size: 1rem;
-  font-family: inherit;
-}
-
-.input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
-.formActions {
-  display: flex;
-  gap: 1rem;
-}
-
 .loading,
 .error {
   text-align: center;
@@ -356,4 +273,3 @@ h2 {
   gap: 0.5rem;
 }
 </style>
-
