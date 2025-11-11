@@ -9,7 +9,7 @@ Nuxt 3 / Vue 3 / TypeScript で構築された学習用CRUDアプリケーショ
 
 - **名言の管理**: やる気の出る名言を保存・一覧・更新・削除
 - **今日の名言**: 日付と気分（1〜5）をシードに、決定性のあるランダム名言を表示
-- **ローカル永続化**: localStorage を使用（将来的にSupabase等へ差し替え可能な設計）
+- **データ永続化**: localStorage または REST API を使用（環境変数で切り替え可能）
 
 ## 技術スタック
 
@@ -36,6 +36,32 @@ npm run dev
 ```
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
+
+### REST APIの使用（オプション）
+
+デフォルトではlocalStorageを使用しますが、REST APIを使用することもできます。
+
+1. `.env`ファイルを作成
+
+```bash
+# APIを使用する場合
+NUXT_PUBLIC_USE_API=true
+NUXT_PUBLIC_API_BASE_URL=/api
+```
+
+2. 環境変数を設定
+   - `NUXT_PUBLIC_USE_API=true`: REST APIを使用
+   - `NUXT_PUBLIC_API_BASE_URL`: APIのベースURL（デフォルトは `/api`）
+
+3. 開発サーバーを再起動
+
+```bash
+npm run dev
+```
+
+**実装済み**: Nuxt 3のServer API Routes（`server/api/quotes/`）が実装されています。同じプロジェクト内でREST APIを試すことができます。
+
+**注意**: 現在の実装では、データはメモリ上に保存されます。サーバーを再起動するとデータは消えます（学習用の簡易実装）。
 
 ### ビルド
 
@@ -82,8 +108,19 @@ vue-learn-1/
 ├── repositories/
 │   ├── QuoteRepository.ts    # Repository インターフェース
 │   ├── LocalQuoteRepository.ts # localStorage実装
-│   ├── factory.ts            # Repository ファクトリ
+│   ├── ApiQuoteRepository.ts  # REST API実装
+│   ├── factory.ts            # Repository ファクトリ（環境変数で切り替え）
 │   └── __tests__/            # テストファイル
+├── server/
+│   ├── api/
+│   │   └── quotes/           # REST APIエンドポイント（Nuxt 3 Server API Routes）
+│   │       ├── index.get.ts  # GET /api/quotes
+│   │       ├── index.post.ts # POST /api/quotes
+│   │       └── [id].get.ts   # GET /api/quotes/:id
+│   │       └── [id].put.ts   # PUT /api/quotes/:id
+│   │       └── [id].delete.ts # DELETE /api/quotes/:id
+│   └── utils/
+│       └── quotes-storage.ts # メモリ上にデータを保存（学習用）
 ├── stores/
 │   └── quotes.ts             # Piniaストア
 ├── types/

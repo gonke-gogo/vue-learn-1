@@ -21,7 +21,13 @@
       <button @click="showAddForm = true" class="button">最初の名言を追加</button>
     </div>
     <div v-else class="quotesList">
-      <div v-for="quote in quotes" :key="quote.id" class="quoteItem">
+      <div
+        v-for="quote in quotes"
+        :key="quote.id"
+        class="quoteItem"
+        :[dynamicAttr]="quote.id"
+        v-on:[dynamicEvent]="handleQuoteClick(quote)"
+      >
         <div class="quoteContent">
           <p class="quoteText">{{ quote.text }}</p>
           <p v-if="quote.author" class="quoteAuthor">— {{ quote.author }}</p>
@@ -33,8 +39,10 @@
           </p>
         </div>
         <div class="quoteActions">
-          <button @click="startEdit(quote)" class="buttonSmall">編集</button>
-          <button @click="handleDelete(quote.id)" class="buttonSmall buttonDanger">削除</button>
+          <button @click.stop="startEdit(quote)" class="buttonSmall">編集</button>
+          <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
+            削除
+          </button>
         </div>
       </div>
     </div>
@@ -51,6 +59,12 @@ const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote
 
 const showAddForm = ref(false)
 const editingQuote = ref<Quote | null>(null)
+
+// 動的引数の例
+// 動的属性名: data-quote-id属性を動的に設定
+const dynamicAttr = ref('data-quote-id')
+// 動的イベント名: ダブルクリックイベントを動的に設定
+const dynamicEvent = ref('dblclick')
 
 // フォームの値（双方向バインディング用）
 const form = ref({
@@ -77,6 +91,11 @@ function startEdit(quote: Quote) {
 
 function cancelForm() {
   resetForm()
+}
+
+// 動的イベント用のハンドラ（ダブルクリックで編集を開始）
+function handleQuoteClick(quote: Quote) {
+  startEdit(quote)
 }
 
 // EventEmitterで受け取ったフォームの値のみを使用（valueのみを親に投げる要件を満たす）
