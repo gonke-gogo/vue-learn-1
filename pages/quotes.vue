@@ -5,10 +5,11 @@
       <button @click="showAddForm = true" class="button">新規追加</button>
     </div>
 
+    <!-- 新規追加フォーム（ページ上部に表示） -->
     <QuoteForm
-      v-if="showAddForm || editingQuote"
+      v-if="showAddForm && !editingQuote"
       v-model="form"
-      :is-edit-mode="!!editingQuote"
+      :is-edit-mode="false"
       :is-loading="isLoading"
       @submit="handleSubmit"
       @cancel="cancelForm"
@@ -21,28 +22,39 @@
       <button @click="showAddForm = true" class="button">最初の名言を追加</button>
     </div>
     <div v-else class="quotesList">
-      <div
-        v-for="quote in quotes"
-        :key="quote.id"
-        class="quoteItem"
-        :[dynamicAttr]="quote.id"
-        v-on:[dynamicEvent]="handleQuoteClick(quote)"
-      >
-        <div class="quoteContent">
-          <p class="quoteText">{{ quote.text }}</p>
-          <p v-if="quote.author" class="quoteAuthor">— {{ quote.author }}</p>
-          <div v-if="quote.tags && quote.tags.length > 0" class="tags">
-            <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
+      <div v-for="quote in quotes" :key="quote.id">
+        <!-- 編集モードの場合、該当レコードの位置にフォームを表示 -->
+        <QuoteForm
+          v-if="editingQuote && editingQuote.id === quote.id"
+          v-model="form"
+          :is-edit-mode="true"
+          :is-loading="isLoading"
+          @submit="handleSubmit"
+          @cancel="cancelForm"
+        />
+        <!-- 通常表示（編集対象でない場合） -->
+        <div
+          v-else
+          class="quoteItem"
+          :[dynamicAttr]="quote.id"
+          @[dynamicEvent]="handleQuoteClick(quote)"
+        >
+          <div class="quoteContent">
+            <p class="quoteText">{{ quote.text }}</p>
+            <p v-if="quote.author" class="quoteAuthor">— {{ quote.author }}</p>
+            <div v-if="quote.tags && quote.tags.length > 0" class="tags">
+              <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
+            </div>
+            <p class="quoteMeta">
+              {{ new Date(quote.createdAt).toLocaleDateString('ja-JP') }}
+            </p>
           </div>
-          <p class="quoteMeta">
-            {{ new Date(quote.createdAt).toLocaleDateString('ja-JP') }}
-          </p>
-        </div>
-        <div class="quoteActions">
-          <button @click.stop="startEdit(quote)" class="buttonSmall">編集</button>
-          <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
-            削除
-          </button>
+          <div class="quoteActions">
+            <button @click.stop="startEdit(quote)" class="buttonSmall">編集</button>
+            <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
+              削除
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -63,8 +75,11 @@ const editingQuote = ref<Quote | null>(null)
 // 動的引数の例
 // 動的属性名: data-quote-id属性を動的に設定
 const dynamicAttr = ref('data-quote-id')
-// 動的イベント名: ダブルクリックイベントを動的に設定
-const dynamicEvent = ref('dblclick')
+// 動的イベント名: タッチデバイスかどうかでイベントを切り替え（実行時に動的に決定）
+const dynamicEvent = computed(() => {
+  // タッチデバイスの場合はタッチイベント、それ以外はダブルクリック
+  return 'ontouchstart' in window ? 'touchstart' : 'dblclick'
+})
 
 // フォームの値（双方向バインディング用）
 const form = ref({
@@ -86,7 +101,8 @@ function startEdit(quote: Quote) {
     author: quote.author || '',
     tags: quote.tags || [],
   }
-  showAddForm.value = true
+  // 編集モードの場合は新規追加フォームを非表示にする
+  showAddForm.value = false
 }
 
 function cancelForm() {

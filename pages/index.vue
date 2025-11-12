@@ -15,7 +15,12 @@
         </select>
       </div>
 
-      <div v-if="selectedQuote" class="quoteCard">
+      <div
+        v-if="selectedQuote"
+        class="quoteCard"
+        :[moodAttr]="mood"
+        :[quoteIdAttr]="selectedQuote.id"
+      >
         <p class="quoteText">{{ selectedQuote.text }}</p>
         <p v-if="selectedQuote.author" class="quoteAuthor">— {{ selectedQuote.author }}</p>
         <div v-if="selectedQuote.tags && selectedQuote.tags.length > 0" class="tags">
@@ -48,6 +53,11 @@ const { quotes, loadQuotes } = useQuotes()
 const mood = ref(3)
 const selectedQuote = ref<Quote | null>(null)
 const salt = ref(0)
+
+// 動的引数の例
+// 気分と名言IDを動的属性として設定（テスト・デバッグ用）
+const moodAttr = ref('data-mood')
+const quoteIdAttr = ref('data-quote-id')
 
 // 自動切り替え用タイマーID
 const rotateTimerId = ref<number | null>(null)
