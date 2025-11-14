@@ -37,7 +37,7 @@
           v-else
           class="quoteItem"
           :[dynamicAttr]="quote.id"
-          @[dynamicEvent]="handleQuoteClick(quote)"
+          @[dynamicEvent]="handleQuoteClick(quote as Quote)"
         >
           <div class="quoteContent">
             <p class="quoteText">{{ quote.text }}</p>
@@ -50,7 +50,7 @@
             </p>
           </div>
           <div class="quoteActions">
-            <button @click.stop="startEdit(quote)" class="buttonSmall">編集</button>
+            <button @click.stop="startEdit(quote as Quote)" class="buttonSmall">編集</button>
             <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
               削除
             </button>
@@ -99,7 +99,7 @@ function startEdit(quote: Quote) {
   form.value = {
     text: quote.text,
     author: quote.author || '',
-    tags: quote.tags || [],
+    tags: quote.tags ? [...quote.tags] : [],
   }
   // 編集モードの場合は新規追加フォームを非表示にする
   showAddForm.value = false
@@ -157,7 +157,7 @@ onMounted(async () => {
   if (editId) {
     const quote = quotes.value.find((q) => q.id === editId)
     if (quote) {
-      startEdit(quote)
+      startEdit(quote as Quote)
     }
   }
 })

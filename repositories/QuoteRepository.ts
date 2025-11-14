@@ -1,7 +1,7 @@
 import type { Quote } from '@/types/quote'
 
 export class RepositoryError extends Error {
-  constructor(message: string, public cause?: unknown) {
+  constructor(message: string, public override cause?: unknown) {
     super(message)
     this.name = 'RepositoryError'
   }
@@ -14,4 +14,7 @@ export interface QuoteRepository {
   update(id: string, quote: Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Quote>
   remove(id: string): Promise<void>
 }
+
+// omitは除外
+// Partialは型のすべてのプロパティをオプショナルに
 

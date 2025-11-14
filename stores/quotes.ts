@@ -86,5 +86,12 @@ export const useQuotesStore = defineStore('quotes', () => {
     removeQuote,
     getQuote,
   }
+}, {
+  // pinia-plugin-persistedstateを使用して永続化
+  // localStorageへの直接アクセスではなく、ライブラリの機能を使用
+  persist: {
+    // pickで永続化するプロパティを指定（quotesのみを永続化）
+    pick: ['quotes'], // isLoading, errorは永続化しない
+  },
 })
 

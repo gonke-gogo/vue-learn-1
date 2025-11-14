@@ -7,7 +7,7 @@ export function useQuotes() {
 
   const searchQuotes = (query: string): Quote[] => {
     if (!query.trim()) {
-      return store.quotes
+      return [...store.quotes] as Quote[]
     }
     const lowerQuery = query.toLowerCase()
     return store.quotes.filter(
@@ -15,16 +15,16 @@ export function useQuotes() {
         quote.text.toLowerCase().includes(lowerQuery) ||
         quote.author?.toLowerCase().includes(lowerQuery) ||
         quote.tags?.some((tag) => tag.toLowerCase().includes(lowerQuery))
-    )
+    ) as Quote[]
   }
 
   const filterByTags = (tags: string[]): Quote[] => {
     if (tags.length === 0) {
-      return store.quotes
+      return [...store.quotes] as Quote[]
     }
     return store.quotes.filter((quote) =>
       tags.some((tag) => quote.tags?.includes(tag))
-    )
+    ) as Quote[]
   }
 
   const sortQuotes = (quotes: Quote[], order: 'asc' | 'desc' = 'desc'): Quote[] => {

@@ -75,7 +75,9 @@ function pickQuote() {
     return
   }
   const random = useSeededRandom(today.value, mood.value, salt.value.toString())
-  selectedQuote.value = random.pick(quotes.value) || null
+  const picked = random.pick(quotes.value)
+  // readonly QuoteからQuoteに変換（型アサーション）
+  selectedQuote.value = (picked ? { ...picked } : null) as Quote | null
 }
 
 function pickNext() {
