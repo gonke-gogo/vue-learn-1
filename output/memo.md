@@ -1,3 +1,47 @@
+- 処理の流れ
+┌─────────────────────────────────────────┐
+│ 1. ブラウザ（UI）                        │
+│    ユーザーがフォームに入力して送信       │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 2. pages/quotes.vue                     │
+│    handleSubmit()                       │
+│    → addQuote(formValue)                │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 3. composables/useQuotes.ts            │
+│    useQuotes()                          │
+│    → store.addQuote                     │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 4. stores/quotes.ts                     │
+│    useQuotesStore.addQuote()            │
+│    → repository.add(quote)               │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 5. repositories/factory.ts              │
+│    createQuoteRepository()              │
+│    → new LocalQuoteRepository()         │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 6. repositories/LocalQuoteRepository.ts│
+│    add()                                │
+│    → getQuotes()                        │
+│    → 新しい名言オブジェクト作成          │
+│    → saveQuotes(quotes)                 │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 7. repositories/LocalQuoteRepository.ts│
+│    saveQuotes()                         │
+│    → localStorage.setItem()              │
+└─────────────────────────────────────────┘
+
 - Props / Event / Modelを使ってコンポーネントを実装する事ができる
 
   **実装内容:**
@@ -260,6 +304,110 @@
   - コンポーネントがシンプルになる
   - ロジックを独立してテストできる
   - 関心の分離が実現される
+
+- pinia
+  - state, Actions, Gettersを含むのが一般的
+
+  **Piniaのメリット:**
+  1. **状態管理とデータ操作の一体化**: 1つの関数でデータ操作と状態更新を管理できる
+  2. **複数コンポーネントで状態を共有**: 1つのストアを複数のコンポーネントから使用でき、状態が自動的に同期される
+  3. **リアクティビティの自動更新**: 状態が変わると自動的にUIが更新される
+  4. **エラーハンドリングの一元管理**: すべてのCRUD操作で統一されたエラー処理とローディング状態を管理できる
+  5. **型安全性**: TypeScriptで型チェックができる
+  6. **テストしやすい**: ストアを直接テストできる
+
+  **永続化の実装: 良い例 vs 悪い例**
+
+  **✅ 良い例: ライブラリ（pinia-plugin-persistedstate）を使う**
+
+  ```typescript
+  // stores/quotes.ts
+  export const useQuotesStore = defineStore('quotes', () => {
+    const quotes = ref<Quote[]>([])
+    // ...
+    return { quotes }
+  }, {
+    persist: {
+      pick: ['quotes'],  // quotesのみを永続化
+    },
+  })
+  ```
+
+  **メリット:**
+  - シンプル: 設定だけで永続化できる
+  - 自動化: 保存・復元が自動的に行われる
+  - 柔軟性: `pick`で永続化するプロパティを選択可能
+  - 保守性: ライブラリが更新・修正を担当
+  - 型安全: TypeScriptと相性が良い
+
+  **❌ 悪い例: localStorageに直接アクセスする**
+
+  ```typescript
+  // ❌ 悪い例：localStorageに直接アクセス
+  export const useQuotesStore = defineStore('quotes', () => {
+    // 初期化時にlocalStorageから読み込む
+    const loadFromStorage = () => {
+      try {
+        const stored = localStorage.getItem('quotes')
+        return stored ? JSON.parse(stored) : []
+      } catch (error) {
+        console.error('Failed to load from storage:', error)
+        return []
+      }
+    }
+    
+    const quotes = ref<Quote[]>(loadFromStorage())
+    
+    // quotesが変更されるたびにlocalStorageに保存
+    watch(quotes, (newQuotes) => {
+      try {
+        localStorage.setItem('quotes', JSON.stringify(newQuotes))
+      } catch (error) {
+        console.error('Failed to save to storage:', error)
+      }
+    }, { deep: true })
+    
+    return { quotes }
+  })
+  ```
+
+  **デメリット:**
+  
+  1. **コードが複雑: 手動で保存・復元を実装する必要がある**
+     - 初期化時にlocalStorageから読み込む関数（`loadFromStorage()`）を実装する必要がある
+     - 状態が変更されるたびに保存するために`watch`で深い監視（`{ deep: true }`）が必要
+     - SSR（サーバーサイドレンダリング）対応のために`typeof window === 'undefined'`のチェックが必要
+     - ライブラリを使えば設定だけで済むが、直接アクセスではすべて自分で実装する必要がある
+  
+  2. **エラーハンドリングが必要: 各所でtry-catchが必要**
+     - `loadFromStorage()`で`JSON.parse()`が失敗する可能性があるため、try-catchが必要
+     - `watch`内の`localStorage.setItem()`も容量制限などで失敗する可能性があるため、try-catchが必要
+     - エラーハンドリングのロジックが各所に分散し、一貫性を保ちにくい
+     - ライブラリを使えば、エラーハンドリングはライブラリが自動的に処理してくれる
+  
+  3. **保守性が低い: 変更時に複数箇所を修正する必要がある**
+     - ストレージキー名を変更する場合、`loadFromStorage()`と`watch`内の両方を修正する必要がある
+     - 永続化するプロパティを追加・削除する場合、`watch`の条件を変更する必要がある
+     - エラーハンドリングの方法を変更する場合、各所のtry-catchを修正する必要がある
+     - ライブラリを使えば、設定を変更するだけで済む
+  
+  4. **バグのリスク: 手動実装で見落としが起きやすい**
+     - `watch`に`{ deep: true }`を付け忘れると、配列の中身が変わっても保存されない
+     - SSR対応を忘れると、サーバー側でエラーが発生する
+     - 初期化のタイミングを間違えると、他のコンポーネントが空の状態を参照してしまう
+     - クリーンアップを忘れると、メモリリークが発生する可能性がある
+     - ライブラリを使えば、これらの問題はライブラリが解決してくれる
+  
+  5. **機能が限定的: 選択的永続化などは自前実装が必要**
+     - `quotes`だけを永続化し、`isLoading`や`error`は永続化しない場合、条件分岐が必要
+     - 複数のストアで異なる永続化設定を使う場合、それぞれに実装が必要
+     - 永続化のタイミングを制御したい場合（例：一定時間後に保存）、自前で実装が必要
+     - ライブラリを使えば、`pick`オプションで簡単に選択的永続化ができる
+
+  **このプロジェクトでの実装:**
+  - `plugins/pinia-persistedstate.client.ts`でプラグインを設定
+  - `stores/quotes.ts`で`persist`オプションを使用
+  - `pick: ['quotes']`で`quotes`のみを永続化（`isLoading`、`error`は永続化しない）
 
 
 **自分的によく学んどいた方がいいと思うこと**
