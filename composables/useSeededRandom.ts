@@ -54,7 +54,7 @@ export function useSeededRandom(date: string, mood: number, salt?: string) {
   /**
    * 配列から1つの要素をランダムに選択
    */
-  function pick<T>(array: T[]): T | undefined {
+  function pick<T>(array: readonly T[]): T | undefined {
     if (array.length === 0) {
       return undefined
     }

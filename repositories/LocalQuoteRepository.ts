@@ -1,5 +1,6 @@
 import type { Quote } from '@/types/quote'
-import type { QuoteRepository, RepositoryError } from './QuoteRepository'
+import type { QuoteRepository } from './QuoteRepository'
+import { RepositoryError } from './QuoteRepository'
 import { generateId } from '@/utils/id'
 
 const STORAGE_KEY = 'motivator.quotes'

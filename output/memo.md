@@ -1,3 +1,47 @@
+- 処理の流れ
+┌─────────────────────────────────────────┐
+│ 1. ブラウザ（UI）                        │
+│    ユーザーがフォームに入力して送信       │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 2. pages/quotes.vue                     │
+│    handleSubmit()                       │
+│    → addQuote(formValue)                │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 3. composables/useQuotes.ts            │
+│    useQuotes()                          │
+│    → store.addQuote                     │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 4. stores/quotes.ts                     │
+│    useQuotesStore.addQuote()            │
+│    → repository.add(quote)               │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 5. repositories/factory.ts              │
+│    createQuoteRepository()              │
+│    → new LocalQuoteRepository()         │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 6. repositories/LocalQuoteRepository.ts│
+│    add()                                │
+│    → getQuotes()                        │
+│    → 新しい名言オブジェクト作成          │
+│    → saveQuotes(quotes)                 │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 7. repositories/LocalQuoteRepository.ts│
+│    saveQuotes()                         │
+│    → localStorage.setItem()              │
+└─────────────────────────────────────────┘
+
 - Props / Event / Modelを使ってコンポーネントを実装する事ができる
 
   **実装内容:**
@@ -261,6 +305,657 @@
   - ロジックを独立してテストできる
   - 関心の分離が実現される
 
+- pinia
+  - state, Actions, Gettersを含むのが一般的
+
+  **Piniaのメリット:**
+  1. **状態管理とデータ操作の一体化**: 1つの関数でデータ操作と状態更新を管理できる
+  2. **複数コンポーネントで状態を共有**: 1つのストアを複数のコンポーネントから使用でき、状態が自動的に同期される
+  3. **リアクティビティの自動更新**: 状態が変わると自動的にUIが更新される
+  4. **エラーハンドリングの一元管理**: すべてのCRUD操作で統一されたエラー処理とローディング状態を管理できる
+  5. **型安全性**: TypeScriptで型チェックができる
+  6. **テストしやすい**: ストアを直接テストできる
+
+  **永続化の実装: 良い例 vs 悪い例**
+
+  **✅ 良い例: ライブラリ（pinia-plugin-persistedstate）を使う**
+
+  ```typescript
+  // stores/quotes.ts
+  export const useQuotesStore = defineStore('quotes', () => {
+    const quotes = ref<Quote[]>([])
+    // ...
+    return { quotes }
+  }, {
+    persist: {
+      pick: ['quotes'],  // quotesのみを永続化
+    },
+  })
+  ```
+
+  **メリット:**
+  - シンプル: 設定だけで永続化できる
+  - 自動化: 保存・復元が自動的に行われる
+  - 柔軟性: `pick`で永続化するプロパティを選択可能
+  - 保守性: ライブラリが更新・修正を担当
+  - 型安全: TypeScriptと相性が良い
+
+  **❌ 悪い例: localStorageに直接アクセスする**
+
+  ```typescript
+  // ❌ 悪い例：localStorageに直接アクセス
+  export const useQuotesStore = defineStore('quotes', () => {
+    // 初期化時にlocalStorageから読み込む
+    const loadFromStorage = () => {
+      try {
+        const stored = localStorage.getItem('quotes')
+        return stored ? JSON.parse(stored) : []
+      } catch (error) {
+        console.error('Failed to load from storage:', error)
+        return []
+      }
+    }
+    
+    const quotes = ref<Quote[]>(loadFromStorage())
+    
+    // quotesが変更されるたびにlocalStorageに保存
+    watch(quotes, (newQuotes) => {
+      try {
+        localStorage.setItem('quotes', JSON.stringify(newQuotes))
+      } catch (error) {
+        console.error('Failed to save to storage:', error)
+      }
+    }, { deep: true })
+    
+    return { quotes }
+  })
+  ```
+
+  **デメリット:**
+  
+  1. **コードが複雑: 手動で保存・復元を実装する必要がある**
+     - 初期化時にlocalStorageから読み込む関数（`loadFromStorage()`）を実装する必要がある
+     - 状態が変更されるたびに保存するために`watch`で深い監視（`{ deep: true }`）が必要
+     - SSR（サーバーサイドレンダリング）対応のために`typeof window === 'undefined'`のチェックが必要
+     - ライブラリを使えば設定だけで済むが、直接アクセスではすべて自分で実装する必要がある
+  
+  2. **エラーハンドリングが必要: 各所でtry-catchが必要**
+     - `loadFromStorage()`で`JSON.parse()`が失敗する可能性があるため、try-catchが必要
+     - `watch`内の`localStorage.setItem()`も容量制限などで失敗する可能性があるため、try-catchが必要
+     - エラーハンドリングのロジックが各所に分散し、一貫性を保ちにくい
+     - ライブラリを使えば、エラーハンドリングはライブラリが自動的に処理してくれる
+  
+  3. **保守性が低い: 変更時に複数箇所を修正する必要がある**
+     - ストレージキー名を変更する場合、`loadFromStorage()`と`watch`内の両方を修正する必要がある
+     - 永続化するプロパティを追加・削除する場合、`watch`の条件を変更する必要がある
+     - エラーハンドリングの方法を変更する場合、各所のtry-catchを修正する必要がある
+     - ライブラリを使えば、設定を変更するだけで済む
+  
+  4. **バグのリスク: 手動実装で見落としが起きやすい**
+     - `watch`に`{ deep: true }`を付け忘れると、配列の中身が変わっても保存されない
+     - SSR対応を忘れると、サーバー側でエラーが発生する
+     - 初期化のタイミングを間違えると、他のコンポーネントが空の状態を参照してしまう
+     - クリーンアップを忘れると、メモリリークが発生する可能性がある
+     - ライブラリを使えば、これらの問題はライブラリが解決してくれる
+  
+  5. **機能が限定的: 選択的永続化などは自前実装が必要**
+     - `quotes`だけを永続化し、`isLoading`や`error`は永続化しない場合、条件分岐が必要
+     - 複数のストアで異なる永続化設定を使う場合、それぞれに実装が必要
+     - 永続化のタイミングを制御したい場合（例：一定時間後に保存）、自前で実装が必要
+     - ライブラリを使えば、`pick`オプションで簡単に選択的永続化ができる
+
+  **このプロジェクトでの実装:**
+  - `plugins/pinia-persistedstate.client.ts`でプラグインを設定
+  - `stores/quotes.ts`で`persist`オプションを使用
+  - `pick: ['quotes']`で`quotes`のみを永続化（`isLoading`、`error`は永続化しない）
+
+- シンプルなルーティングを設定できる
+
+  **ルーティングとは:**
+  - ルーティングとは、URL（アドレスバーのパス）と表示するページを対応付ける仕組みです
+  - 例：`/quotes`というURLにアクセスすると、名言一覧ページが表示される
+  - これにより、ユーザーはURLを直接入力したり、ブックマークしたりできます
+
+  **Nuxt.jsのファイルベースルーティング:**
+  - Nuxt.jsでは、**ファイル構造がそのままルーティングになる**という特徴があります
+  - `pages/`ディレクトリ内のファイル構造が自動的にURLパスに変換されます
+  - 特別な設定ファイルは不要（自動的にルーティングが生成される）
+  - これにより、直感的で分かりやすいルーティングが実現できます
+
+  **基本的なルーティングの仕組み:**
+  ```
+  ファイル構造                    →  URL
+  ──────────────────────────────────────────
+  pages/index.vue                →  /
+  pages/quotes.vue               →  /quotes
+  pages/authors/index.vue        →  /authors
+  ```
+
+  **実装内容:**
+  - `pages/index.vue` → `/`（トップページ）
+  - `pages/quotes.vue` → `/quotes`（名言一覧ページ）
+  - `pages/authors/index.vue` → `/authors`（著者一覧ページ）
+
+  **`index.vue`の特別な役割:**
+  - `index.vue`は**特別なファイル名**で、URLには表示されません
+  - `pages/index.vue` → `/`（`index`という文字列はURLに含まれない）
+  - `pages/authors/index.vue` → `/authors`（`index`という文字列はURLに含まれない）
+  - 一方、`quotes.vue` → `/quotes`（ファイル名がそのままURLになる）
+
+  **なぜ`index.vue`が特別なのか:**
+  - `index`は「そのディレクトリのデフォルトページ」を表す慣習的な名前
+  - Webサーバーでも`index.html`がデフォルトページとして扱われるのと同じ考え方
+  - これにより、ディレクトリ名だけでアクセスできる（`/authors`で`/authors/index`にアクセスできる）
+
+  **ファイル名とURLの対応関係:**
+  ```
+  ファイル名              →  URL
+  ──────────────────────────────────────────
+  index.vue              →  /（親ディレクトリのルート）
+  quotes.vue             →  /quotes（ファイル名がそのままURL）
+  authors/index.vue      →  /authors（親ディレクトリのルート）
+  authors/profile.vue    →  /authors/profile（ファイル名がそのままURL）
+  ```
+
+  **技術的なポイント:**
+  - Nuxt 3では`pages/`配下の`.vue`ファイルが自動的にルートとして認識される
+  - `index.vue`は親ディレクトリのルートになる（`pages/authors/index.vue` → `/authors`）
+  - `index.vue`以外のファイル名は、そのままURLパスになる
+  - `NuxtLink`コンポーネントでページ間のナビゲーションを実装
+
+  **基本的な使い方:**
+  ```vue
+  <!-- NuxtLinkでページ遷移 -->
+  <NuxtLink to="/quotes">名言一覧</NuxtLink>
+  <NuxtLink to="/authors">著者一覧</NuxtLink>
+  ```
+
+  **NuxtLinkとは:**
+  - HTMLの`<a>`タグの代わりに使用するNuxt.jsのコンポーネント
+  - ページ遷移が高速（SPAのため、ページ全体を再読み込みしない）
+  - `to`属性で遷移先のURLを指定
+
+- 動的ルートマッチが定義できる
+
+  **動的ルートとは:**
+  - 動的ルートとは、URLの一部が変わるルーティングのことです
+  - 例：`/quotes/123`、`/quotes/456`のように、名言のIDが変わる
+  - 固定のURL（`/quotes`）ではなく、可変部分（`123`、`456`）を含むURL
+  - これにより、1つのページコンポーネントで複数のデータを表示できます
+
+  **なぜ動的ルートが必要か:**
+  - 名言が100個ある場合、100個のページファイルを作るのは非効率
+  - 動的ルートを使えば、1つのファイル（`[id].vue`）で全ての名言を表示できる
+  - URLからIDを取得して、そのIDに対応するデータを表示する
+
+  **実装内容:**
+  - `pages/quotes/[id].vue` → `/quotes/:id`（個別名言の詳細ページ）
+  - `route.params.id`で動的パラメータを取得
+  - 例：`/quotes/abc123`にアクセスすると、`route.params.id`は`"abc123"`になる
+
+  **ファイル構造とURLの対応:**
+  ```
+  ファイル構造                    →  URL例
+  ──────────────────────────────────────────
+  pages/quotes/[id].vue          →  /quotes/abc123
+                                   /quotes/xyz789
+                                   /quotes/任意のID
+  ```
+
+  **技術的なポイント:**
+  - ファイル名を`[id].vue`のように角括弧`[]`で囲むと、動的ルートになる
+  - `[id]`の`id`はパラメータ名で、`route.params.id`で取得できる
+  - `useRoute()`で現在のルート情報（パラメータ、クエリ、パスなど）を取得
+  - `useRouter()`でプログラムからページ遷移（`router.push()`など）ができる
+
+  **実際の使用例:**
+  ```vue
+  <!-- pages/quotes/[id].vue -->
+  <template>
+    <div>
+      <h1>名言の詳細</h1>
+      <p>ID: {{ quoteId }}</p>
+      <!-- このIDを使ってデータを取得・表示 -->
+    </div>
+  </template>
+
+  <script setup>
+  const route = useRoute()
+  const router = useRouter()
+  
+  // 動的パラメータを取得
+  // /quotes/abc123 にアクセスした場合、quoteId は "abc123" になる
+  const quoteId = computed(() => route.params.id as string)
+  
+  // プログラムから遷移（ボタンクリックなどで使用）
+  function goBack() {
+    router.push('/quotes')  // 名言一覧ページに戻る
+  }
+  </script>
+  ```
+
+  **なぜ`[id]`という記法なのか:**
+  - Nuxt.jsの標準的な命名規則で、角括弧`[]`が動的パラメータを表す
+  - この記法は変更できない（Nuxt.jsの仕様）
+  - 多くのプロジェクトで使用されている標準的な記法
+  - `[id]`の`id`は任意の名前（`[userId]`、`[postId]`など）に変更可能
+
+  **動的ルートのマッチング:**
+  - `[id].vue` → 任意の文字列にマッチ（例：`/quotes/123`、`/quotes/abc`）
+  - `[id]`はパラメータ名で、`route.params.id`で取得できる
+  - 複数の動的パラメータも可能（例：`[userId]/[postId].vue` → `/users/123/posts/456`）
+
+  **初心者向けの理解:**
+  - `[id]`は「ここに何かが入る」というプレースホルダー（置き換え可能な部分）
+  - 実際のURLでは、`[id]`の部分が具体的な値（例：`abc123`）に置き換わる
+  - その値は`route.params.id`で取得できる
+
+- ネストされたルーティングの定義ができる
+
+  **ネストされたルーティングとは:**
+  - ネスト（入れ子）されたルーティングとは、親子関係のあるリソースを表現するルーティングです
+  - 例：`/authors/123/quotes` → 「著者123の名言一覧」という意味
+  - ディレクトリ構造でネストを表現する（ディレクトリの中にディレクトリを作る）
+  - 例：`user` → `posts`のようにhas_manyな関係（1対多の関係）を表現
+
+  **なぜネストされたルーティングが必要か:**
+  - リソースの階層関係をURLで表現できる
+  - 例：「著者」という親リソースと、「その著者の名言」という子リソース
+  - URLが直感的で、何を表示しているかが分かりやすい
+
+  **実装内容:**
+  - `pages/authors/[id]/quotes.vue` → `/authors/:id/quotes`（特定著者の名言一覧）
+  - URL形式：`/authors/{著者ID}/quotes`
+  - 例：`/authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes`にアクセスすると、その著者の名言一覧が表示される
+  - このプロジェクトでは、IDベースの設計を採用（著者IDを使用）
+
+  **技術的なポイント:**
+  - ディレクトリ構造がそのままURLパスになる
+  - `pages/authors/[id]/quotes.vue`は以下の構造を表す：
+    - `/authors` → 著者一覧
+    - `/authors/:id` → 特定の著者（動的パラメータ、実際の値は著者ID）
+    - `/authors/:id/quotes` → その著者の名言一覧（ネストされたルート）
+
+  **実際の使用例:**
+  ```vue
+  <!-- pages/authors/[id]/quotes.vue -->
+  <script setup>
+  const route = useRoute()
+  const { quotes, loadQuotes } = useQuotes()
+  const { getAuthor, loadAuthors } = useAuthors()
+  
+  // 動的パラメータから著者IDを取得
+  // /authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes にアクセスした場合
+  const authorId = computed(() => route.params.id as string)
+  
+  // 著者情報を取得
+  const author = computed(() => getAuthor(authorId.value))
+  const authorName = computed(() => author.value?.name || '不明な著者')
+  
+  // 著者IDでフィルタリング
+  const authorQuotes = computed(() => {
+    return quotes.value.filter(
+      (quote) => quote.authorId === authorId.value
+    )
+  })
+  
+  onMounted(async () => {
+    await Promise.all([loadQuotes(), loadAuthors()])
+  })
+  </script>
+  ```
+
+  **ネストされたルーティングの構造:**
+  ```
+  pages/
+    └── authors/
+        ├── index.vue              → /authors（著者一覧）
+        └── [id]/
+            └── quotes.vue         → /authors/:id/quotes（その著者の名言一覧）
+  ```
+
+  **初心者向けの理解:**
+  - ディレクトリ構造がそのままURLになる
+  - `authors/[id]/quotes.vue` → `/authors/{ID}/quotes`というURLになる
+  - `[id]`の部分は動的パラメータで、実際の著者IDに置き換わる
+  - これにより、「著者Aの名言一覧」「著者Bの名言一覧」を1つのファイルで表示できる
+
+  **IDベース設計のメリット（このプロジェクト）:**
+  - 著者IDはUUID（例：`01ARZ3NDEKTSV4RRFFQ69G5FAV`）なので、エンコーディング不要
+  - 特殊文字を含まないため、URLがシンプル
+  - 著者名が変更されてもURLが変わらない（安定性）
+
+  **CRUD画面のルーティング設計例:**
+  ```
+  pages/
+    └── quotes/
+        ├── index.vue          → /quotes（一覧）
+        ├── [id].vue           → /quotes/:id（詳細）
+        └── [id]/
+            └── edit.vue       → /quotes/:id/edit（編集）
+  ```
+
+  **has_many関係のネストルーティング設計例:**
+  ```
+  pages/
+    └── authors/
+        ├── index.vue          → /authors（著者一覧）
+        └── [id]/
+            └── quotes.vue     → /authors/:id/quotes（その著者の名言一覧）
+  ```
+  
+  **パラメータ名の命名規則:**
+  - 動的パラメータの名前は、実際の値の意味を表すべき
+  - 例：`[id]`はID（数値やUUID）を表す場合に使用
+  - 例：`[name]`は名前（文字列）を表す場合に使用
+  - このプロジェクトでは、著者IDをパラメータとして使用するため`[id]`を使用
+
+  **URL設計の選択肢: ID vs 名前（スラッグ）**
+  
+  一般的なRESTful APIの設計では、以下の2つのパターンがあります：
+  
+  **1. IDを使う場合（このプロジェクトで採用）**
+  ```
+  /authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes  → UUID
+  ```
+  
+  **メリット:**
+  - 名前が変更されてもURLが変わらない（安定性）
+  - 特殊文字のエンコーディングが不要
+  - データベースの主キーと直接対応できる
+  - 一般的なRESTful設計パターン
+  - 同名の著者がいても問題ない
+  
+  **デメリット:**
+  - 人間が読めない（IDだけでは何を表すか分からない）
+  - SEOには不利（検索エンジンが内容を理解しにくい）
+  
+  **2. 名前（スラッグ）を使う場合**
+  ```
+  /authors/mark-twain/quotes     → 英語のスラッグ
+  /authors/マーク・トウェイン/quotes → 日本語の名前
+  ```
+  
+  **メリット:**
+  - SEOに有利（URLから内容が分かる）
+  - 人間が読める、共有しやすい
+  - URLが直感的
+  
+  **デメリット:**
+  - 名前が変更されるとURLが変わる（ブックマークが無効になる）
+  - 日本語などの特殊文字はエンコーディングが必要（`encodeURIComponent()`）
+  - 同名の著者がいる場合の処理が必要
+  
+  **3. このプロジェクトでの選択**
+  
+  このプロジェクトでは、**IDベースの設計を採用**しています：
+  - `/authors/{著者ID}/quotes`
+  - 例：`/authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes`
+  
+  **選択理由:**
+  - 著者名が変更されてもURLが変わらない（安定性）
+  - 特殊文字のエンコーディングが不要
+  - データベースの主キーと直接対応できる
+  - 一般的なRESTful設計パターンに準拠
+  
+  **実装の流れ:**
+  1. `Author`型を追加し、著者にIDを付与
+  2. `Quote`型に`authorId`フィールドを追加
+  3. URLを`/authors/:id/quotes`に変更
+  4. 既存データの移行処理を実装
+
+  **メリット:**
+  - URLが直感的で、リソースの階層関係が明確になる
+  - RESTfulな設計になり、SEOにも有利
+  - ブックマークや共有がしやすい
+  - ブラウザの戻る/進むボタンが正しく動作する
+
+  **実装ファイル:**
+  - `pages/quotes/[id].vue`: 個別名言の詳細ページ（動的ルート、IDを使用）
+  - `pages/authors/index.vue`: 著者一覧ページ
+  - `pages/authors/[id]/quotes.vue`: 特定著者の名言一覧（ネストされたルーティング、著者IDを使用）
+
+  **NuxtLinkでの使用例:**
+  ```vue
+  <!-- 動的ルートへのリンク -->
+  <NuxtLink :to="`/quotes/${quote.id}`">詳細</NuxtLink>
+  
+  <!-- ネストされたルートへのリンク（IDベース） -->
+  <NuxtLink :to="`/authors/${author.id}/quotes`">
+    この著者の名言一覧
+  </NuxtLink>
+  
+  <!-- クエリパラメータ付きのリンク -->
+  <NuxtLink :to="{ path: '/quotes', query: { page: 1 } }">
+    名言一覧（1ページ目）
+  </NuxtLink>
+  ```
+
+  **初心者向けの理解:**
+  - `:to`の前に`:`（コロン）を付けると、JavaScriptの式として評価される
+  - `:to="'/quotes'"` → 文字列リテラル（固定のURL）
+  - `:to="`/quotes/${quote.id}`"` → テンプレートリテラル（変数を埋め込む）
+  - `:to="{ path: '/quotes', query: { page: 1 } }"` → オブジェクト形式（クエリパラメータ付き）
+
+  **useRoute()とuseRouter()の違い:**
+  
+  | 関数 | 用途 | 主な機能 |
+  |------|------|----------|
+  | `useRoute()` | 現在のルート情報を取得 | `route.params`、`route.query`、`route.path`など |
+  | `useRouter()` | プログラムからページ遷移 | `router.push()`、`router.replace()`、`router.go()`など |
+  
+  **useRoute()の主なプロパティ:**
+  ```typescript
+  const route = useRoute()
+  
+  // 動的パラメータ（URLの一部として含まれる値）
+  // 例：/quotes/abc123 → route.params.id は "abc123"
+  route.params      // { id: 'abc123' }
+  
+  // クエリパラメータ（URLの?以降の値）
+  // 例：/quotes?page=1&sort=desc → route.query は { page: '1', sort: 'desc' }
+  route.query       // { page: '1', sort: 'desc' }
+  
+  // 現在のパス（URLのパス部分）
+  route.path        // '/quotes/abc123'
+  
+  // ルート名（ファイルベースルーティングでは自動生成）
+  route.name        // 'quotes-id'
+  
+  // ルートのメタ情報（カスタムデータ）
+  route.meta        // {}
+  ```
+  
+  **useRouter()の主なメソッド:**
+  ```typescript
+  const router = useRouter()
+  
+  // ページ遷移（履歴に残る）
+  router.push('/quotes')
+  
+  // クエリパラメータ付きで遷移
+  router.push({ path: '/quotes', query: { page: 1 } })
+  
+  // 履歴を残さずに遷移（戻るボタンで戻れない）
+  router.replace('/quotes')
+  
+  // ブラウザの戻る（-1で1つ戻る）
+  router.go(-1)
+  
+  // ブラウザの進む（1で1つ進む）
+  router.go(1)
+  ```
+
+  **初心者向けの理解:**
+  - `useRoute()`は「現在のページの情報を取得する」ための関数
+  - `useRouter()`は「ページを移動する」ための関数
+  - `route.params`はURLの一部として含まれる値（例：`/quotes/123`の`123`）
+  - `route.query`はURLの`?`以降の値（例：`/quotes?page=1`の`page=1`）
+  - `router.push()`はリンクをクリックした時と同じ動作（履歴に残る）
+  - `router.replace()`は現在のページを置き換える（履歴に残らない）
+
+  **実際の使用例:**
+  ```vue
+  <script setup>
+  const route = useRoute()
+  const router = useRouter()
+  
+  // URLからIDを取得
+  // /quotes/abc123 にアクセスした場合
+  const quoteId = route.params.id  // "abc123"
+  
+  // ボタンクリックでページ遷移
+  function goToQuotes() {
+    router.push('/quotes')
+  }
+  
+  // 検索結果ページに遷移（クエリパラメータ付き）
+  function searchQuotes(keyword: string) {
+    router.push({
+      path: '/quotes',
+      query: { search: keyword }
+    })
+    // → /quotes?search=成功 というURLになる
+  }
+  </script>
+  ```
+
+
+- `ref`と`computed`の違いと使い分け
+
+  **`ref`と`computed`とは:**
+  - どちらもVue 3のリアクティビティシステムの一部
+  - 値が変わると、それを使っている画面が自動で更新される（リアクティビティ）
+  - ただし、用途と動作が異なる
+
+  **`ref`とは:**
+  - 手動で値を変更するためのリアクティブな変数
+  - 自分自身の値が変わると、それを使っている画面が自動で更新される
+  - 他の値の変更を監視して自分を更新する機能はない
+
+  **`computed`とは:**
+  - 他の値から自動計算されるリアクティブな値
+  - 依存する値が変わると、自動で再計算される
+  - 他の値の変更を監視して自分を更新する機能がある
+
+  **基本的な使い方:**
+  ```typescript
+  // ref: 手動で値を変更
+  const count = ref(0)
+  count.value = 1  // 手動で値を変更
+
+  // computed: 他の値から自動計算
+  const doubleCount = computed(() => count.value * 2)
+  // count が変わると自動で doubleCount も更新される
+  ```
+
+  **`.value`が必要な理由:**
+  - `<script>`内では、`ref`や`computed`で作成した値にアクセスする際は`.value`が必要
+  - `<template>`内では、`.value`は不要（自動的に展開される）
+
+  ```typescript
+  // <script>内
+  const authorId = computed(() => route.params.id as string)
+  console.log(authorId.value)  // ✅ .value が必要
+
+  // <template>内
+  // {{ authorId }}  ← .value 不要（自動展開）
+  ```
+
+  **`ref`と`computed`の違い:**
+
+  | 特徴 | `ref` | `computed` |
+  |------|-------|------------|
+  | 用途 | 手動で値を変更する | 他の値から自動計算する |
+  | 更新方法 | 手動で`.value`を設定 | 依存する値が変わると自動更新 |
+  | `watch` | 必要（他の値の変更を監視する場合） | 不要 |
+  | コードの複雑さ | 複雑（`watch`が必要） | シンプル |
+  | 自分自身の値が変わった時の画面更新 | ✅ 自動 | ✅ 自動 |
+  | 他の値の変更を監視して自分を更新 | ❌ なし（`watch`が必要） | ✅ 自動 |
+
+  **`ref`を使うべき場合:**
+  ```typescript
+  // ✅ ref が適切な例
+  const mood = ref(3)  // ユーザーが手動で変更する値
+  const showAddForm = ref(false)  // 手動で表示/非表示を切り替える
+  const editingQuote = ref<Quote | null>(null)  // 手動で編集対象を設定
+  ```
+
+  **`computed`を使うべき場合:**
+  ```typescript
+  // ✅ computed が適切な例
+  const authorId = computed(() => route.params.id as string)  // route.params.id から計算
+  const author = computed(() => getAuthor(authorId.value))  // authorId から計算
+  const authorQuotes = computed(() => {
+    return quotes.value.filter((quote) => quote.authorId === authorId.value)
+  })  // quotes と authorId から計算
+  ```
+
+  **具体例で理解する:**
+
+  **例1: `ref`を使う場合（手動更新が必要）**
+  ```typescript
+  // ❌ ref を使う場合
+  const authorId = ref(route.params.id as string)
+  const author = ref(getAuthor(authorId.value))
+  const authorQuotes = ref<Quote[]>([])
+
+  // route.params.id が変わった時に手動で更新する必要がある
+  watch(() => route.params.id, (newId) => {
+    authorId.value = newId as string
+    author.value = getAuthor(authorId.value)
+    authorQuotes.value = quotes.value.filter((quote) => quote.authorId === authorId.value)
+  })
+
+  // quotes が変わった時も手動で更新する必要がある
+  watch(quotes, () => {
+    authorQuotes.value = quotes.value.filter((quote) => quote.authorId === authorId.value)
+  })
+  ```
+
+  **例2: `computed`を使う場合（自動更新）**
+  ```typescript
+  // ✅ computed を使う場合
+  const authorId = computed(() => route.params.id as string)
+  const author = computed(() => getAuthor(authorId.value))
+  const authorQuotes = computed(() => {
+    return quotes.value.filter((quote) => quote.authorId === authorId.value)
+  })
+  // route.params.id や quotes が変わると自動で再計算される！
+  ```
+
+  **`computed`のメリット:**
+  1. **リアクティビティ（自動更新）**: 依存する値が変わると自動で再計算される
+  2. **パフォーマンス（キャッシュ）**: 依存する値が変わった時だけ再計算される（効率的）
+  3. **コードの簡潔さ**: `watch`が不要で、コードがシンプルになる
+
+  **`computed`が参照している値が変わると自動的に再計算される:**
+  ```typescript
+  const authorId = computed(() => route.params.id as string)
+  
+  // route.params.id が変わると...
+  // → authorId.value が自動で再計算される
+  // → authorId を使っている画面も自動で更新される
+  ```
+
+  **ネストした`computed`の例:**
+  ```typescript
+  // 50-52行目の例
+  const authorId = computed(() => route.params.id as string)
+  const author = computed(() => getAuthor(authorId.value))
+  const authorName = computed(() => author.value?.name || '不明な著者')
+  
+  // route.params.id が変わると → authorId が更新
+  // authorId が変わると → author が更新
+  // author が変わると → authorName が更新
+  // すべて自動で連鎖的に更新される
+  ```
+
+  **まとめ:**
+  - `ref`: 自分自身の変更は検知して画面を更新するが、他の値の変更を監視して自分を更新する機能はない
+  - `computed`: 依存する値の変更を監視して、自動で再計算する機能がある
+  - 他の値から自動計算される値には`computed`を使う
+  - 手動で値を変更する値には`ref`を使う
 
 **自分的によく学んどいた方がいいと思うこと**
 - Vue2とVue3の大きな違いは？

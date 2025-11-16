@@ -1,7 +1,7 @@
 <template>
-  <div class="formCard">
+  <div class="formCard" :[formModeAttr]="isEditMode ? 'edit' : 'create'">
     <h2>{{ isEditMode ? '編集' : '新規追加' }}</h2>
-    <form @submit.prevent="handleSubmit">
+    <form @submit.prevent="handleSubmit" :[formActionAttr]="isEditMode ? 'update' : 'create'">
       <div class="formGroup">
         <label for="text">名言 *</label>
         <textarea
@@ -15,15 +15,18 @@
         />
       </div>
       <div class="formGroup">
-        <label for="author">著者</label>
-        <input
-          id="author"
-          :value="modelValue.author"
-          @input="updateAuthor"
-          type="text"
+        <label for="authorId">著者</label>
+        <select
+          id="authorId"
+          :value="modelValue.authorId || ''"
+          @change="updateAuthorId"
           class="input"
-          placeholder="著者名（任意）"
-        />
+        >
+          <option value="">著者を選択（任意）</option>
+          <option v-for="author in authors" :key="author.id" :value="author.id">
+            {{ author.name }}
+          </option>
+        </select>
       </div>
       <div class="formGroup">
         <label for="tags">タグ（カンマ区切り）</label>
@@ -50,17 +53,20 @@
 
 <script setup lang="ts">
 import type { Quote } from '@/types/quote'
+import { useAuthors } from '@/composables/useAuthors'
 
 // Props定義
 interface Props {
   modelValue: {
     text: string
-    author?: string
+    authorId?: string
     tags?: string[]
   }
   isEditMode?: boolean
   isLoading?: boolean
 }
+
+const { authors, loadAuthors } = useAuthors()
 
 const props = withDefaults(defineProps<Props>(), {
   isEditMode: false,
@@ -69,10 +75,15 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Event定義
 const emit = defineEmits<{
-  'update:modelValue': [value: { text: string; author?: string; tags?: string[] }]
-  submit: [value: { text: string; author?: string; tags?: string[] }]
+  'update:modelValue': [value: { text: string; authorId?: string; tags?: string[] }]
+  submit: [value: { text: string; authorId?: string; tags?: string[] }]
   cancel: []
 }>()
+
+// 動的引数の例
+// 編集モード/新規モードに応じて動的に属性名を変更
+const formModeAttr = ref('data-form-mode')
+const formActionAttr = ref('data-form-action')
 
 // タグ入力用のローカル状態（カンマ区切りの文字列）
 const tagsInput = computed({
@@ -103,12 +114,12 @@ function updateText(event: Event) {
   })
 }
 
-// 著者更新ハンドラ
-function updateAuthor(event: Event) {
-  const target = event.target as HTMLInputElement
+// 著者ID更新ハンドラ
+function updateAuthorId(event: Event) {
+  const target = event.target as HTMLSelectElement
   emit('update:modelValue', {
     ...props.modelValue,
-    author: target.value,
+    authorId: target.value || undefined,
   })
 }
 
@@ -122,7 +133,7 @@ function updateTagsInput(event: Event) {
 function handleSubmit() {
   const formValue = {
     text: props.modelValue.text,
-    author: props.modelValue.author || undefined,
+    authorId: props.modelValue.authorId || undefined,
     tags: props.modelValue.tags || [],
   }
   emit('submit', formValue)
@@ -132,6 +143,38 @@ function handleSubmit() {
 function handleCancel() {
   emit('cancel')
 }
+
+// data-form-mode属性とdata-form-action属性を使った例：コンポーネントマウント時に属性を読み取る
+onMounted(async () => {
+  await loadAuthors()
+  // DOM要素を取得してdata-form-mode属性を読み取る
+  const formCardElement = document.querySelector('.formCard') as HTMLElement
+  if (formCardElement) {
+    const formMode = formCardElement.getAttribute('data-form-mode')
+    console.log(`フォームモード: ${formMode}`) // デバッグ用
+
+    // 属性に基づいて処理を分岐することも可能
+    // if (formMode === 'edit') {
+    //   // 編集モード特有の処理
+    // } else if (formMode === 'create') {
+    //   // 新規作成モード特有の処理
+    // }
+  }
+
+  // data-form-action属性を読み取る例
+  const formElement = document.querySelector('form') as HTMLFormElement
+  if (formElement) {
+    const formAction = formElement.getAttribute('data-form-action')
+    console.log(`フォームアクション: ${formAction}`) // デバッグ用: 'update' または 'create'
+
+    // 属性に基づいて処理を分岐することも可能
+    // if (formAction === 'update') {
+    //   // 更新処理特有の設定
+    // } else if (formAction === 'create') {
+    //   // 作成処理特有の設定
+    // }
+  }
+})
 </script>
 
 <style scoped>
@@ -141,6 +184,28 @@ function handleCancel() {
   border-radius: 0.5rem;
   padding: 2rem;
   margin-bottom: 2rem;
+}
+
+/* data-form-mode属性を使った条件付きスタイリングの例 */
+/* 編集モードの場合は左側にボーダーを追加 */
+.formCard[data-form-mode='edit'] {
+  border-left: 4px solid #f59e0b; /* オレンジ色のボーダー */
+}
+
+/* 新規作成モードの場合は左側に別の色のボーダーを追加 */
+.formCard[data-form-mode='create'] {
+  border-left: 4px solid #10b981; /* 緑色のボーダー */
+}
+
+/* data-form-action属性を使った条件付きスタイリングの例 */
+/* 更新アクションの場合、フォームに影を追加 */
+form[data-form-action='update'] {
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2); /* オレンジ系の影 */
+}
+
+/* 作成アクションの場合、フォームに別の影を追加 */
+form[data-form-action='create'] {
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2); /* 緑系の影 */
 }
 
 h2 {

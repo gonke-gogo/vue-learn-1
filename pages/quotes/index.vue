@@ -2,13 +2,17 @@
   <div class="page">
     <div class="header">
       <h1>名言一覧</h1>
-      <button @click="showAddForm = true" class="button">新規追加</button>
+      <div class="headerActions">
+        <NuxtLink to="/authors" class="button buttonSecondary">著者一覧</NuxtLink>
+        <button @click="showAddForm = true" class="button">新規追加</button>
+      </div>
     </div>
 
+    <!-- 新規追加フォーム（ページ上部に表示） -->
     <QuoteForm
-      v-if="showAddForm || editingQuote"
+      v-if="showAddForm && !editingQuote"
       v-model="form"
-      :is-edit-mode="!!editingQuote"
+      :is-edit-mode="false"
       :is-loading="isLoading"
       @submit="handleSubmit"
       @cancel="cancelForm"
@@ -21,28 +25,46 @@
       <button @click="showAddForm = true" class="button">最初の名言を追加</button>
     </div>
     <div v-else class="quotesList">
-      <div
-        v-for="quote in quotes"
-        :key="quote.id"
-        class="quoteItem"
-        :[dynamicAttr]="quote.id"
-        v-on:[dynamicEvent]="handleQuoteClick(quote)"
-      >
-        <div class="quoteContent">
-          <p class="quoteText">{{ quote.text }}</p>
-          <p v-if="quote.author" class="quoteAuthor">— {{ quote.author }}</p>
-          <div v-if="quote.tags && quote.tags.length > 0" class="tags">
-            <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
+      <div v-for="quote in quotes" :key="quote.id">
+        <!-- 編集モードの場合、該当レコードの位置にフォームを表示 -->
+        <QuoteForm
+          v-if="editingQuote && editingQuote.id === quote.id"
+          v-model="form"
+          :is-edit-mode="true"
+          :is-loading="isLoading"
+          @submit="handleSubmit"
+          @cancel="cancelForm"
+        />
+        <!-- 通常表示（編集対象でない場合） -->
+        <div
+          v-else
+          class="quoteItem"
+          :[dynamicAttr]="quote.id"
+          @[dynamicEvent]="handleQuoteClick(quote as Quote)"
+        >
+          <div class="quoteContent">
+            <p class="quoteText">{{ quote.text }}</p>
+            <p v-if="getAuthorName(quote as Quote)" class="quoteAuthor">— {{ getAuthorName(quote as Quote) }}</p>
+            <div v-if="quote.tags && quote.tags.length > 0" class="tags">
+              <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
+            </div>
+            <p class="quoteMeta">
+              {{ new Date(quote.createdAt).toLocaleDateString('ja-JP') }}
+            </p>
           </div>
-          <p class="quoteMeta">
-            {{ new Date(quote.createdAt).toLocaleDateString('ja-JP') }}
-          </p>
-        </div>
-        <div class="quoteActions">
-          <button @click.stop="startEdit(quote)" class="buttonSmall">編集</button>
-          <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
-            削除
-          </button>
+          <div class="quoteActions">
+            <NuxtLink
+              :to="`/quotes/${quote.id}`"
+              class="buttonSmall"
+              @click.stop
+            >
+              詳細
+            </NuxtLink>
+            <button @click.stop="startEdit(quote as Quote)" class="buttonSmall">編集</button>
+            <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
+              削除
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -55,7 +77,7 @@ import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
 
 const route = useRoute()
-const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote } = useQuotes()
+const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote, getAuthorName } = useQuotes()
 
 const showAddForm = ref(false)
 const editingQuote = ref<Quote | null>(null)
@@ -63,18 +85,21 @@ const editingQuote = ref<Quote | null>(null)
 // 動的引数の例
 // 動的属性名: data-quote-id属性を動的に設定
 const dynamicAttr = ref('data-quote-id')
-// 動的イベント名: ダブルクリックイベントを動的に設定
-const dynamicEvent = ref('dblclick')
+// 動的イベント名: タッチデバイスかどうかでイベントを切り替え（実行時に動的に決定）
+const dynamicEvent = computed(() => {
+  // タッチデバイスの場合はタッチイベント、それ以外はダブルクリック
+  return 'ontouchstart' in window ? 'touchstart' : 'dblclick'
+})
 
 // フォームの値（双方向バインディング用）
 const form = ref({
   text: '',
-  author: '',
+  authorId: '',
   tags: [] as string[],
 })
 
 function resetForm() {
-  form.value = { text: '', author: '', tags: [] }
+  form.value = { text: '', authorId: '', tags: [] }
   editingQuote.value = null
   showAddForm.value = false
 }
@@ -83,10 +108,11 @@ function startEdit(quote: Quote) {
   editingQuote.value = quote
   form.value = {
     text: quote.text,
-    author: quote.author || '',
-    tags: quote.tags || [],
+    authorId: quote.authorId || '',
+    tags: quote.tags ? [...quote.tags] : [],
   }
-  showAddForm.value = true
+  // 編集モードの場合は新規追加フォームを非表示にする
+  showAddForm.value = false
 }
 
 function cancelForm() {
@@ -99,7 +125,7 @@ function handleQuoteClick(quote: Quote) {
 }
 
 // EventEmitterで受け取ったフォームの値のみを使用（valueのみを親に投げる要件を満たす）
-async function handleSubmit(formValue: { text: string; author?: string; tags?: string[] }) {
+async function handleSubmit(formValue: { text: string; authorId?: string; tags?: string[] }) {
   try {
     if (editingQuote.value) {
       await updateQuote(editingQuote.value.id, formValue)
@@ -141,7 +167,7 @@ onMounted(async () => {
   if (editId) {
     const quote = quotes.value.find((q) => q.id === editId)
     if (quote) {
-      startEdit(quote)
+      startEdit(quote as Quote)
     }
   }
 })
@@ -158,6 +184,11 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+}
+
+.headerActions {
+  display: flex;
+  gap: 1rem;
 }
 
 h1 {
@@ -290,5 +321,9 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.quoteActions a {
+  text-decoration: none;
 }
 </style>
