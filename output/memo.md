@@ -821,6 +821,142 @@
   ```
 
 
+- `ref`と`computed`の違いと使い分け
+
+  **`ref`と`computed`とは:**
+  - どちらもVue 3のリアクティビティシステムの一部
+  - 値が変わると、それを使っている画面が自動で更新される（リアクティビティ）
+  - ただし、用途と動作が異なる
+
+  **`ref`とは:**
+  - 手動で値を変更するためのリアクティブな変数
+  - 自分自身の値が変わると、それを使っている画面が自動で更新される
+  - 他の値の変更を監視して自分を更新する機能はない
+
+  **`computed`とは:**
+  - 他の値から自動計算されるリアクティブな値
+  - 依存する値が変わると、自動で再計算される
+  - 他の値の変更を監視して自分を更新する機能がある
+
+  **基本的な使い方:**
+  ```typescript
+  // ref: 手動で値を変更
+  const count = ref(0)
+  count.value = 1  // 手動で値を変更
+
+  // computed: 他の値から自動計算
+  const doubleCount = computed(() => count.value * 2)
+  // count が変わると自動で doubleCount も更新される
+  ```
+
+  **`.value`が必要な理由:**
+  - `<script>`内では、`ref`や`computed`で作成した値にアクセスする際は`.value`が必要
+  - `<template>`内では、`.value`は不要（自動的に展開される）
+
+  ```typescript
+  // <script>内
+  const authorId = computed(() => route.params.id as string)
+  console.log(authorId.value)  // ✅ .value が必要
+
+  // <template>内
+  // {{ authorId }}  ← .value 不要（自動展開）
+  ```
+
+  **`ref`と`computed`の違い:**
+
+  | 特徴 | `ref` | `computed` |
+  |------|-------|------------|
+  | 用途 | 手動で値を変更する | 他の値から自動計算する |
+  | 更新方法 | 手動で`.value`を設定 | 依存する値が変わると自動更新 |
+  | `watch` | 必要（他の値の変更を監視する場合） | 不要 |
+  | コードの複雑さ | 複雑（`watch`が必要） | シンプル |
+  | 自分自身の値が変わった時の画面更新 | ✅ 自動 | ✅ 自動 |
+  | 他の値の変更を監視して自分を更新 | ❌ なし（`watch`が必要） | ✅ 自動 |
+
+  **`ref`を使うべき場合:**
+  ```typescript
+  // ✅ ref が適切な例
+  const mood = ref(3)  // ユーザーが手動で変更する値
+  const showAddForm = ref(false)  // 手動で表示/非表示を切り替える
+  const editingQuote = ref<Quote | null>(null)  // 手動で編集対象を設定
+  ```
+
+  **`computed`を使うべき場合:**
+  ```typescript
+  // ✅ computed が適切な例
+  const authorId = computed(() => route.params.id as string)  // route.params.id から計算
+  const author = computed(() => getAuthor(authorId.value))  // authorId から計算
+  const authorQuotes = computed(() => {
+    return quotes.value.filter((quote) => quote.authorId === authorId.value)
+  })  // quotes と authorId から計算
+  ```
+
+  **具体例で理解する:**
+
+  **例1: `ref`を使う場合（手動更新が必要）**
+  ```typescript
+  // ❌ ref を使う場合
+  const authorId = ref(route.params.id as string)
+  const author = ref(getAuthor(authorId.value))
+  const authorQuotes = ref<Quote[]>([])
+
+  // route.params.id が変わった時に手動で更新する必要がある
+  watch(() => route.params.id, (newId) => {
+    authorId.value = newId as string
+    author.value = getAuthor(authorId.value)
+    authorQuotes.value = quotes.value.filter((quote) => quote.authorId === authorId.value)
+  })
+
+  // quotes が変わった時も手動で更新する必要がある
+  watch(quotes, () => {
+    authorQuotes.value = quotes.value.filter((quote) => quote.authorId === authorId.value)
+  })
+  ```
+
+  **例2: `computed`を使う場合（自動更新）**
+  ```typescript
+  // ✅ computed を使う場合
+  const authorId = computed(() => route.params.id as string)
+  const author = computed(() => getAuthor(authorId.value))
+  const authorQuotes = computed(() => {
+    return quotes.value.filter((quote) => quote.authorId === authorId.value)
+  })
+  // route.params.id や quotes が変わると自動で再計算される！
+  ```
+
+  **`computed`のメリット:**
+  1. **リアクティビティ（自動更新）**: 依存する値が変わると自動で再計算される
+  2. **パフォーマンス（キャッシュ）**: 依存する値が変わった時だけ再計算される（効率的）
+  3. **コードの簡潔さ**: `watch`が不要で、コードがシンプルになる
+
+  **`computed`が参照している値が変わると自動的に再計算される:**
+  ```typescript
+  const authorId = computed(() => route.params.id as string)
+  
+  // route.params.id が変わると...
+  // → authorId.value が自動で再計算される
+  // → authorId を使っている画面も自動で更新される
+  ```
+
+  **ネストした`computed`の例:**
+  ```typescript
+  // 50-52行目の例
+  const authorId = computed(() => route.params.id as string)
+  const author = computed(() => getAuthor(authorId.value))
+  const authorName = computed(() => author.value?.name || '不明な著者')
+  
+  // route.params.id が変わると → authorId が更新
+  // authorId が変わると → author が更新
+  // author が変わると → authorName が更新
+  // すべて自動で連鎖的に更新される
+  ```
+
+  **まとめ:**
+  - `ref`: 自分自身の変更は検知して画面を更新するが、他の値の変更を監視して自分を更新する機能はない
+  - `computed`: 依存する値の変更を監視して、自動で再計算する機能がある
+  - 他の値から自動計算される値には`computed`を使う
+  - 手動で値を変更する値には`ref`を使う
+
 **自分的によく学んどいた方がいいと思うこと**
 - Vue2とVue3の大きな違いは？
 - そもそもTypeScriptがいいってなってるのはなんでなの？
