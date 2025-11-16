@@ -409,6 +409,417 @@
   - `stores/quotes.ts`で`persist`オプションを使用
   - `pick: ['quotes']`で`quotes`のみを永続化（`isLoading`、`error`は永続化しない）
 
+- シンプルなルーティングを設定できる
+
+  **ルーティングとは:**
+  - ルーティングとは、URL（アドレスバーのパス）と表示するページを対応付ける仕組みです
+  - 例：`/quotes`というURLにアクセスすると、名言一覧ページが表示される
+  - これにより、ユーザーはURLを直接入力したり、ブックマークしたりできます
+
+  **Nuxt.jsのファイルベースルーティング:**
+  - Nuxt.jsでは、**ファイル構造がそのままルーティングになる**という特徴があります
+  - `pages/`ディレクトリ内のファイル構造が自動的にURLパスに変換されます
+  - 特別な設定ファイルは不要（自動的にルーティングが生成される）
+  - これにより、直感的で分かりやすいルーティングが実現できます
+
+  **基本的なルーティングの仕組み:**
+  ```
+  ファイル構造                    →  URL
+  ──────────────────────────────────────────
+  pages/index.vue                →  /
+  pages/quotes.vue               →  /quotes
+  pages/authors/index.vue        →  /authors
+  ```
+
+  **実装内容:**
+  - `pages/index.vue` → `/`（トップページ）
+  - `pages/quotes.vue` → `/quotes`（名言一覧ページ）
+  - `pages/authors/index.vue` → `/authors`（著者一覧ページ）
+
+  **`index.vue`の特別な役割:**
+  - `index.vue`は**特別なファイル名**で、URLには表示されません
+  - `pages/index.vue` → `/`（`index`という文字列はURLに含まれない）
+  - `pages/authors/index.vue` → `/authors`（`index`という文字列はURLに含まれない）
+  - 一方、`quotes.vue` → `/quotes`（ファイル名がそのままURLになる）
+
+  **なぜ`index.vue`が特別なのか:**
+  - `index`は「そのディレクトリのデフォルトページ」を表す慣習的な名前
+  - Webサーバーでも`index.html`がデフォルトページとして扱われるのと同じ考え方
+  - これにより、ディレクトリ名だけでアクセスできる（`/authors`で`/authors/index`にアクセスできる）
+
+  **ファイル名とURLの対応関係:**
+  ```
+  ファイル名              →  URL
+  ──────────────────────────────────────────
+  index.vue              →  /（親ディレクトリのルート）
+  quotes.vue             →  /quotes（ファイル名がそのままURL）
+  authors/index.vue      →  /authors（親ディレクトリのルート）
+  authors/profile.vue    →  /authors/profile（ファイル名がそのままURL）
+  ```
+
+  **技術的なポイント:**
+  - Nuxt 3では`pages/`配下の`.vue`ファイルが自動的にルートとして認識される
+  - `index.vue`は親ディレクトリのルートになる（`pages/authors/index.vue` → `/authors`）
+  - `index.vue`以外のファイル名は、そのままURLパスになる
+  - `NuxtLink`コンポーネントでページ間のナビゲーションを実装
+
+  **基本的な使い方:**
+  ```vue
+  <!-- NuxtLinkでページ遷移 -->
+  <NuxtLink to="/quotes">名言一覧</NuxtLink>
+  <NuxtLink to="/authors">著者一覧</NuxtLink>
+  ```
+
+  **NuxtLinkとは:**
+  - HTMLの`<a>`タグの代わりに使用するNuxt.jsのコンポーネント
+  - ページ遷移が高速（SPAのため、ページ全体を再読み込みしない）
+  - `to`属性で遷移先のURLを指定
+
+- 動的ルートマッチが定義できる
+
+  **動的ルートとは:**
+  - 動的ルートとは、URLの一部が変わるルーティングのことです
+  - 例：`/quotes/123`、`/quotes/456`のように、名言のIDが変わる
+  - 固定のURL（`/quotes`）ではなく、可変部分（`123`、`456`）を含むURL
+  - これにより、1つのページコンポーネントで複数のデータを表示できます
+
+  **なぜ動的ルートが必要か:**
+  - 名言が100個ある場合、100個のページファイルを作るのは非効率
+  - 動的ルートを使えば、1つのファイル（`[id].vue`）で全ての名言を表示できる
+  - URLからIDを取得して、そのIDに対応するデータを表示する
+
+  **実装内容:**
+  - `pages/quotes/[id].vue` → `/quotes/:id`（個別名言の詳細ページ）
+  - `route.params.id`で動的パラメータを取得
+  - 例：`/quotes/abc123`にアクセスすると、`route.params.id`は`"abc123"`になる
+
+  **ファイル構造とURLの対応:**
+  ```
+  ファイル構造                    →  URL例
+  ──────────────────────────────────────────
+  pages/quotes/[id].vue          →  /quotes/abc123
+                                   /quotes/xyz789
+                                   /quotes/任意のID
+  ```
+
+  **技術的なポイント:**
+  - ファイル名を`[id].vue`のように角括弧`[]`で囲むと、動的ルートになる
+  - `[id]`の`id`はパラメータ名で、`route.params.id`で取得できる
+  - `useRoute()`で現在のルート情報（パラメータ、クエリ、パスなど）を取得
+  - `useRouter()`でプログラムからページ遷移（`router.push()`など）ができる
+
+  **実際の使用例:**
+  ```vue
+  <!-- pages/quotes/[id].vue -->
+  <template>
+    <div>
+      <h1>名言の詳細</h1>
+      <p>ID: {{ quoteId }}</p>
+      <!-- このIDを使ってデータを取得・表示 -->
+    </div>
+  </template>
+
+  <script setup>
+  const route = useRoute()
+  const router = useRouter()
+  
+  // 動的パラメータを取得
+  // /quotes/abc123 にアクセスした場合、quoteId は "abc123" になる
+  const quoteId = computed(() => route.params.id as string)
+  
+  // プログラムから遷移（ボタンクリックなどで使用）
+  function goBack() {
+    router.push('/quotes')  // 名言一覧ページに戻る
+  }
+  </script>
+  ```
+
+  **なぜ`[id]`という記法なのか:**
+  - Nuxt.jsの標準的な命名規則で、角括弧`[]`が動的パラメータを表す
+  - この記法は変更できない（Nuxt.jsの仕様）
+  - 多くのプロジェクトで使用されている標準的な記法
+  - `[id]`の`id`は任意の名前（`[userId]`、`[postId]`など）に変更可能
+
+  **動的ルートのマッチング:**
+  - `[id].vue` → 任意の文字列にマッチ（例：`/quotes/123`、`/quotes/abc`）
+  - `[id]`はパラメータ名で、`route.params.id`で取得できる
+  - 複数の動的パラメータも可能（例：`[userId]/[postId].vue` → `/users/123/posts/456`）
+
+  **初心者向けの理解:**
+  - `[id]`は「ここに何かが入る」というプレースホルダー（置き換え可能な部分）
+  - 実際のURLでは、`[id]`の部分が具体的な値（例：`abc123`）に置き換わる
+  - その値は`route.params.id`で取得できる
+
+- ネストされたルーティングの定義ができる
+
+  **ネストされたルーティングとは:**
+  - ネスト（入れ子）されたルーティングとは、親子関係のあるリソースを表現するルーティングです
+  - 例：`/authors/123/quotes` → 「著者123の名言一覧」という意味
+  - ディレクトリ構造でネストを表現する（ディレクトリの中にディレクトリを作る）
+  - 例：`user` → `posts`のようにhas_manyな関係（1対多の関係）を表現
+
+  **なぜネストされたルーティングが必要か:**
+  - リソースの階層関係をURLで表現できる
+  - 例：「著者」という親リソースと、「その著者の名言」という子リソース
+  - URLが直感的で、何を表示しているかが分かりやすい
+
+  **実装内容:**
+  - `pages/authors/[id]/quotes.vue` → `/authors/:id/quotes`（特定著者の名言一覧）
+  - URL形式：`/authors/{著者ID}/quotes`
+  - 例：`/authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes`にアクセスすると、その著者の名言一覧が表示される
+  - このプロジェクトでは、IDベースの設計を採用（著者IDを使用）
+
+  **技術的なポイント:**
+  - ディレクトリ構造がそのままURLパスになる
+  - `pages/authors/[id]/quotes.vue`は以下の構造を表す：
+    - `/authors` → 著者一覧
+    - `/authors/:id` → 特定の著者（動的パラメータ、実際の値は著者ID）
+    - `/authors/:id/quotes` → その著者の名言一覧（ネストされたルート）
+
+  **実際の使用例:**
+  ```vue
+  <!-- pages/authors/[id]/quotes.vue -->
+  <script setup>
+  const route = useRoute()
+  const { quotes, loadQuotes } = useQuotes()
+  const { getAuthor, loadAuthors } = useAuthors()
+  
+  // 動的パラメータから著者IDを取得
+  // /authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes にアクセスした場合
+  const authorId = computed(() => route.params.id as string)
+  
+  // 著者情報を取得
+  const author = computed(() => getAuthor(authorId.value))
+  const authorName = computed(() => author.value?.name || '不明な著者')
+  
+  // 著者IDでフィルタリング
+  const authorQuotes = computed(() => {
+    return quotes.value.filter(
+      (quote) => quote.authorId === authorId.value
+    )
+  })
+  
+  onMounted(async () => {
+    await Promise.all([loadQuotes(), loadAuthors()])
+  })
+  </script>
+  ```
+
+  **ネストされたルーティングの構造:**
+  ```
+  pages/
+    └── authors/
+        ├── index.vue              → /authors（著者一覧）
+        └── [id]/
+            └── quotes.vue         → /authors/:id/quotes（その著者の名言一覧）
+  ```
+
+  **初心者向けの理解:**
+  - ディレクトリ構造がそのままURLになる
+  - `authors/[id]/quotes.vue` → `/authors/{ID}/quotes`というURLになる
+  - `[id]`の部分は動的パラメータで、実際の著者IDに置き換わる
+  - これにより、「著者Aの名言一覧」「著者Bの名言一覧」を1つのファイルで表示できる
+
+  **IDベース設計のメリット（このプロジェクト）:**
+  - 著者IDはUUID（例：`01ARZ3NDEKTSV4RRFFQ69G5FAV`）なので、エンコーディング不要
+  - 特殊文字を含まないため、URLがシンプル
+  - 著者名が変更されてもURLが変わらない（安定性）
+
+  **CRUD画面のルーティング設計例:**
+  ```
+  pages/
+    └── quotes/
+        ├── index.vue          → /quotes（一覧）
+        ├── [id].vue           → /quotes/:id（詳細）
+        └── [id]/
+            └── edit.vue       → /quotes/:id/edit（編集）
+  ```
+
+  **has_many関係のネストルーティング設計例:**
+  ```
+  pages/
+    └── authors/
+        ├── index.vue          → /authors（著者一覧）
+        └── [id]/
+            └── quotes.vue     → /authors/:id/quotes（その著者の名言一覧）
+  ```
+  
+  **パラメータ名の命名規則:**
+  - 動的パラメータの名前は、実際の値の意味を表すべき
+  - 例：`[id]`はID（数値やUUID）を表す場合に使用
+  - 例：`[name]`は名前（文字列）を表す場合に使用
+  - このプロジェクトでは、著者IDをパラメータとして使用するため`[id]`を使用
+
+  **URL設計の選択肢: ID vs 名前（スラッグ）**
+  
+  一般的なRESTful APIの設計では、以下の2つのパターンがあります：
+  
+  **1. IDを使う場合（このプロジェクトで採用）**
+  ```
+  /authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes  → UUID
+  ```
+  
+  **メリット:**
+  - 名前が変更されてもURLが変わらない（安定性）
+  - 特殊文字のエンコーディングが不要
+  - データベースの主キーと直接対応できる
+  - 一般的なRESTful設計パターン
+  - 同名の著者がいても問題ない
+  
+  **デメリット:**
+  - 人間が読めない（IDだけでは何を表すか分からない）
+  - SEOには不利（検索エンジンが内容を理解しにくい）
+  
+  **2. 名前（スラッグ）を使う場合**
+  ```
+  /authors/mark-twain/quotes     → 英語のスラッグ
+  /authors/マーク・トウェイン/quotes → 日本語の名前
+  ```
+  
+  **メリット:**
+  - SEOに有利（URLから内容が分かる）
+  - 人間が読める、共有しやすい
+  - URLが直感的
+  
+  **デメリット:**
+  - 名前が変更されるとURLが変わる（ブックマークが無効になる）
+  - 日本語などの特殊文字はエンコーディングが必要（`encodeURIComponent()`）
+  - 同名の著者がいる場合の処理が必要
+  
+  **3. このプロジェクトでの選択**
+  
+  このプロジェクトでは、**IDベースの設計を採用**しています：
+  - `/authors/{著者ID}/quotes`
+  - 例：`/authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes`
+  
+  **選択理由:**
+  - 著者名が変更されてもURLが変わらない（安定性）
+  - 特殊文字のエンコーディングが不要
+  - データベースの主キーと直接対応できる
+  - 一般的なRESTful設計パターンに準拠
+  
+  **実装の流れ:**
+  1. `Author`型を追加し、著者にIDを付与
+  2. `Quote`型に`authorId`フィールドを追加
+  3. URLを`/authors/:id/quotes`に変更
+  4. 既存データの移行処理を実装
+
+  **メリット:**
+  - URLが直感的で、リソースの階層関係が明確になる
+  - RESTfulな設計になり、SEOにも有利
+  - ブックマークや共有がしやすい
+  - ブラウザの戻る/進むボタンが正しく動作する
+
+  **実装ファイル:**
+  - `pages/quotes/[id].vue`: 個別名言の詳細ページ（動的ルート、IDを使用）
+  - `pages/authors/index.vue`: 著者一覧ページ
+  - `pages/authors/[id]/quotes.vue`: 特定著者の名言一覧（ネストされたルーティング、著者IDを使用）
+
+  **NuxtLinkでの使用例:**
+  ```vue
+  <!-- 動的ルートへのリンク -->
+  <NuxtLink :to="`/quotes/${quote.id}`">詳細</NuxtLink>
+  
+  <!-- ネストされたルートへのリンク（IDベース） -->
+  <NuxtLink :to="`/authors/${author.id}/quotes`">
+    この著者の名言一覧
+  </NuxtLink>
+  
+  <!-- クエリパラメータ付きのリンク -->
+  <NuxtLink :to="{ path: '/quotes', query: { page: 1 } }">
+    名言一覧（1ページ目）
+  </NuxtLink>
+  ```
+
+  **初心者向けの理解:**
+  - `:to`の前に`:`（コロン）を付けると、JavaScriptの式として評価される
+  - `:to="'/quotes'"` → 文字列リテラル（固定のURL）
+  - `:to="`/quotes/${quote.id}`"` → テンプレートリテラル（変数を埋め込む）
+  - `:to="{ path: '/quotes', query: { page: 1 } }"` → オブジェクト形式（クエリパラメータ付き）
+
+  **useRoute()とuseRouter()の違い:**
+  
+  | 関数 | 用途 | 主な機能 |
+  |------|------|----------|
+  | `useRoute()` | 現在のルート情報を取得 | `route.params`、`route.query`、`route.path`など |
+  | `useRouter()` | プログラムからページ遷移 | `router.push()`、`router.replace()`、`router.go()`など |
+  
+  **useRoute()の主なプロパティ:**
+  ```typescript
+  const route = useRoute()
+  
+  // 動的パラメータ（URLの一部として含まれる値）
+  // 例：/quotes/abc123 → route.params.id は "abc123"
+  route.params      // { id: 'abc123' }
+  
+  // クエリパラメータ（URLの?以降の値）
+  // 例：/quotes?page=1&sort=desc → route.query は { page: '1', sort: 'desc' }
+  route.query       // { page: '1', sort: 'desc' }
+  
+  // 現在のパス（URLのパス部分）
+  route.path        // '/quotes/abc123'
+  
+  // ルート名（ファイルベースルーティングでは自動生成）
+  route.name        // 'quotes-id'
+  
+  // ルートのメタ情報（カスタムデータ）
+  route.meta        // {}
+  ```
+  
+  **useRouter()の主なメソッド:**
+  ```typescript
+  const router = useRouter()
+  
+  // ページ遷移（履歴に残る）
+  router.push('/quotes')
+  
+  // クエリパラメータ付きで遷移
+  router.push({ path: '/quotes', query: { page: 1 } })
+  
+  // 履歴を残さずに遷移（戻るボタンで戻れない）
+  router.replace('/quotes')
+  
+  // ブラウザの戻る（-1で1つ戻る）
+  router.go(-1)
+  
+  // ブラウザの進む（1で1つ進む）
+  router.go(1)
+  ```
+
+  **初心者向けの理解:**
+  - `useRoute()`は「現在のページの情報を取得する」ための関数
+  - `useRouter()`は「ページを移動する」ための関数
+  - `route.params`はURLの一部として含まれる値（例：`/quotes/123`の`123`）
+  - `route.query`はURLの`?`以降の値（例：`/quotes?page=1`の`page=1`）
+  - `router.push()`はリンクをクリックした時と同じ動作（履歴に残る）
+  - `router.replace()`は現在のページを置き換える（履歴に残らない）
+
+  **実際の使用例:**
+  ```vue
+  <script setup>
+  const route = useRoute()
+  const router = useRouter()
+  
+  // URLからIDを取得
+  // /quotes/abc123 にアクセスした場合
+  const quoteId = route.params.id  // "abc123"
+  
+  // ボタンクリックでページ遷移
+  function goToQuotes() {
+    router.push('/quotes')
+  }
+  
+  // 検索結果ページに遷移（クエリパラメータ付き）
+  function searchQuotes(keyword: string) {
+    router.push({
+      path: '/quotes',
+      query: { search: keyword }
+    })
+    // → /quotes?search=成功 というURLになる
+  }
+  </script>
+  ```
+
 
 **自分的によく学んどいた方がいいと思うこと**
 - Vue2とVue3の大きな違いは？

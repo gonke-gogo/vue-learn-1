@@ -15,15 +15,18 @@
         />
       </div>
       <div class="formGroup">
-        <label for="author">著者</label>
-        <input
-          id="author"
-          :value="modelValue.author"
-          @input="updateAuthor"
-          type="text"
+        <label for="authorId">著者</label>
+        <select
+          id="authorId"
+          :value="modelValue.authorId || ''"
+          @change="updateAuthorId"
           class="input"
-          placeholder="著者名（任意）"
-        />
+        >
+          <option value="">著者を選択（任意）</option>
+          <option v-for="author in authors" :key="author.id" :value="author.id">
+            {{ author.name }}
+          </option>
+        </select>
       </div>
       <div class="formGroup">
         <label for="tags">タグ（カンマ区切り）</label>
@@ -50,17 +53,20 @@
 
 <script setup lang="ts">
 import type { Quote } from '@/types/quote'
+import { useAuthors } from '@/composables/useAuthors'
 
 // Props定義
 interface Props {
   modelValue: {
     text: string
-    author?: string
+    authorId?: string
     tags?: string[]
   }
   isEditMode?: boolean
   isLoading?: boolean
 }
+
+const { authors, loadAuthors } = useAuthors()
 
 const props = withDefaults(defineProps<Props>(), {
   isEditMode: false,
@@ -69,8 +75,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Event定義
 const emit = defineEmits<{
-  'update:modelValue': [value: { text: string; author?: string; tags?: string[] }]
-  submit: [value: { text: string; author?: string; tags?: string[] }]
+  'update:modelValue': [value: { text: string; authorId?: string; tags?: string[] }]
+  submit: [value: { text: string; authorId?: string; tags?: string[] }]
   cancel: []
 }>()
 
@@ -108,12 +114,12 @@ function updateText(event: Event) {
   })
 }
 
-// 著者更新ハンドラ
-function updateAuthor(event: Event) {
-  const target = event.target as HTMLInputElement
+// 著者ID更新ハンドラ
+function updateAuthorId(event: Event) {
+  const target = event.target as HTMLSelectElement
   emit('update:modelValue', {
     ...props.modelValue,
-    author: target.value,
+    authorId: target.value || undefined,
   })
 }
 
@@ -127,7 +133,7 @@ function updateTagsInput(event: Event) {
 function handleSubmit() {
   const formValue = {
     text: props.modelValue.text,
-    author: props.modelValue.author || undefined,
+    authorId: props.modelValue.authorId || undefined,
     tags: props.modelValue.tags || [],
   }
   emit('submit', formValue)
@@ -139,7 +145,8 @@ function handleCancel() {
 }
 
 // data-form-mode属性とdata-form-action属性を使った例：コンポーネントマウント時に属性を読み取る
-onMounted(() => {
+onMounted(async () => {
+  await loadAuthors()
   // DOM要素を取得してdata-form-mode属性を読み取る
   const formCardElement = document.querySelector('.formCard') as HTMLElement
   if (formCardElement) {

@@ -2,7 +2,10 @@
   <div class="page">
     <div class="header">
       <h1>名言一覧</h1>
-      <button @click="showAddForm = true" class="button">新規追加</button>
+      <div class="headerActions">
+        <NuxtLink to="/authors" class="button buttonSecondary">著者一覧</NuxtLink>
+        <button @click="showAddForm = true" class="button">新規追加</button>
+      </div>
     </div>
 
     <!-- 新規追加フォーム（ページ上部に表示） -->
@@ -41,7 +44,7 @@
         >
           <div class="quoteContent">
             <p class="quoteText">{{ quote.text }}</p>
-            <p v-if="quote.author" class="quoteAuthor">— {{ quote.author }}</p>
+            <p v-if="getAuthorName(quote as Quote)" class="quoteAuthor">— {{ getAuthorName(quote as Quote) }}</p>
             <div v-if="quote.tags && quote.tags.length > 0" class="tags">
               <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
             </div>
@@ -50,6 +53,13 @@
             </p>
           </div>
           <div class="quoteActions">
+            <NuxtLink
+              :to="`/quotes/${quote.id}`"
+              class="buttonSmall"
+              @click.stop
+            >
+              詳細
+            </NuxtLink>
             <button @click.stop="startEdit(quote as Quote)" class="buttonSmall">編集</button>
             <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
               削除
@@ -67,7 +77,7 @@ import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
 
 const route = useRoute()
-const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote } = useQuotes()
+const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote, getAuthorName } = useQuotes()
 
 const showAddForm = ref(false)
 const editingQuote = ref<Quote | null>(null)
@@ -84,12 +94,12 @@ const dynamicEvent = computed(() => {
 // フォームの値（双方向バインディング用）
 const form = ref({
   text: '',
-  author: '',
+  authorId: '',
   tags: [] as string[],
 })
 
 function resetForm() {
-  form.value = { text: '', author: '', tags: [] }
+  form.value = { text: '', authorId: '', tags: [] }
   editingQuote.value = null
   showAddForm.value = false
 }
@@ -98,7 +108,7 @@ function startEdit(quote: Quote) {
   editingQuote.value = quote
   form.value = {
     text: quote.text,
-    author: quote.author || '',
+    authorId: quote.authorId || '',
     tags: quote.tags ? [...quote.tags] : [],
   }
   // 編集モードの場合は新規追加フォームを非表示にする
@@ -115,7 +125,7 @@ function handleQuoteClick(quote: Quote) {
 }
 
 // EventEmitterで受け取ったフォームの値のみを使用（valueのみを親に投げる要件を満たす）
-async function handleSubmit(formValue: { text: string; author?: string; tags?: string[] }) {
+async function handleSubmit(formValue: { text: string; authorId?: string; tags?: string[] }) {
   try {
     if (editingQuote.value) {
       await updateQuote(editingQuote.value.id, formValue)
@@ -174,6 +184,11 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+}
+
+.headerActions {
+  display: flex;
+  gap: 1rem;
 }
 
 h1 {
@@ -306,5 +321,9 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.quoteActions a {
+  text-decoration: none;
 }
 </style>

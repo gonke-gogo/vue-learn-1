@@ -22,7 +22,7 @@
         :[quoteIdAttr]="selectedQuote.id"
       >
         <p class="quoteText">{{ selectedQuote.text }}</p>
-        <p v-if="selectedQuote.author" class="quoteAuthor">— {{ selectedQuote.author }}</p>
+        <p v-if="getAuthorName(selectedQuote)" class="quoteAuthor">— {{ getAuthorName(selectedQuote) }}</p>
         <div v-if="selectedQuote.tags && selectedQuote.tags.length > 0" class="tags">
           <span v-for="tag in selectedQuote.tags" :key="tag" class="tag">{{ tag }}</span>
         </div>
@@ -33,10 +33,10 @@
         <NuxtLink to="/quotes" class="button buttonSecondary">新規追加</NuxtLink>
         <NuxtLink
           v-if="selectedQuote"
-          :to="`/quotes?edit=${selectedQuote.id}`"
+          :to="`/quotes/${selectedQuote.id}`"
           class="button buttonSecondary"
         >
-          編集へ
+          詳細を見る
         </NuxtLink>
       </div>
     </div>
@@ -48,7 +48,7 @@ import { useQuotes } from '@/composables/useQuotes'
 import { useSeededRandom } from '@/composables/useSeededRandom'
 import type { Quote } from '@/types/quote'
 
-const { quotes, loadQuotes } = useQuotes()
+const { quotes, loadQuotes, getAuthorName } = useQuotes()
 
 const mood = ref(3)
 const selectedQuote = ref<Quote | null>(null)
