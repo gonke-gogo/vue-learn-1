@@ -23,11 +23,7 @@
           <p class="authorCount">{{ author.quoteCount }}件の名言</p>
         </div>
         <div class="authorActions">
-          <NuxtLink
-            :to="`/authors/${author.id}/quotes`"
-            class="buttonSmall"
-            @click.stop
-          >
+          <NuxtLink :to="`/authors/${author.id}/quotes`" class="buttonSmall" @click.stop>
             名言を見る →
           </NuxtLink>
         </div>
@@ -39,16 +35,35 @@
 <script setup lang="ts">
 import { useQuotes } from '@/composables/useQuotes'
 import { useAuthors } from '@/composables/useAuthors'
+import { useQuotesStore } from '@/stores/quotes'
+import { useAuthorsStore } from '@/stores/authors'
+import type { Quote } from '@/types/quote'
+import type { Author } from '@/types/author'
 import { computed } from 'vue'
 
 const router = useRouter()
-const { quotes, loadQuotes, updateQuote } = useQuotes()
-const { authors, isLoading, error, loadAuthors, getOrCreateAuthorByName } = useAuthors()
+
+// サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
+
+const { quotes, updateQuote } = useQuotes()
+const { authors, isLoading, error, getOrCreateAuthorByName } = useAuthors()
+const quotesStore = useQuotesStore()
+const authorsStore = useAuthorsStore()
+
+// サーバーサイドで取得したデータをストアに反映
+if (fetchedQuotes.value) {
+  quotesStore.quotes = fetchedQuotes.value
+}
+if (fetchedAuthors.value) {
+  authorsStore.authors = fetchedAuthors.value
+}
 
 // 著者ごとの名言数を計算
 const authorsWithCount = computed(() => {
   const quoteCountMap = new Map<string, number>()
-  
+
   quotes.value.forEach((quote) => {
     if (quote.authorId) {
       const count = quoteCountMap.get(quote.authorId) || 0
@@ -72,9 +87,7 @@ function navigateToAuthorQuotes(authorId: string) {
 // 名言から著者を自動生成する処理
 async function migrateAuthorsFromQuotes() {
   // author文字列があるがauthorIdがない名言を探す
-  const quotesToMigrate = quotes.value.filter(
-    (quote) => quote.author && !quote.authorId
-  )
+  const quotesToMigrate = quotes.value.filter((quote) => quote.author && !quote.authorId)
 
   if (quotesToMigrate.length === 0) {
     return // 移行不要
@@ -99,12 +112,15 @@ async function migrateAuthorsFromQuotes() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadQuotes(), loadAuthors()])
-  
+  // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
   // 著者がいない場合、名言から著者を自動生成
   if (authors.value.length === 0 && quotes.value.length > 0) {
     await migrateAuthorsFromQuotes()
-    await loadAuthors() // 著者データを再読み込み
+    // 著者データを再取得
+    const { data: refreshedAuthors } = await useFetch<Author[]>('/api/authors')
+    if (refreshedAuthors.value) {
+      authorsStore.authors = refreshedAuthors.value
+    }
   }
 })
 </script>
@@ -179,7 +195,9 @@ h1 {
   align-items: center;
   gap: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .authorItem:hover {
@@ -221,4 +239,3 @@ h1 {
   background-color: var(--color-primary-hover);
 }
 </style>
-

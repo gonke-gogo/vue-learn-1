@@ -1,4 +1,4 @@
-import { getQuotes, saveQuotes } from '~/server/utils/quotes-storage'
+import { getQuotes, saveQuotes } from '@/server/utils/quotes-storage'
 
 /**
  * DELETE /api/quotes/:id

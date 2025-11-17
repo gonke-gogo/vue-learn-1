@@ -53,12 +53,21 @@
 
 <script setup lang="ts">
 import { useQuotes } from '@/composables/useQuotes'
+import { useQuotesStore } from '@/stores/quotes'
 import type { Quote } from '@/types/quote'
 
 const route = useRoute()
 const router = useRouter()
-const { quotes, getQuote, updateQuote, removeQuote, loadQuotes, isLoading, error, getAuthorName } =
-  useQuotes()
+
+// サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { quotes, getQuote, updateQuote, removeQuote, isLoading, error, getAuthorName } = useQuotes()
+const store = useQuotesStore()
+
+// サーバーサイドで取得したデータをストアに反映
+if (fetchedQuotes.value) {
+  store.quotes = fetchedQuotes.value
+}
 
 const quoteId = computed(() => route.params.id as string)
 const quote = computed(() => {
@@ -97,7 +106,11 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
   isSaving.value = true
   try {
     await updateQuote(quote.value.id, formValue)
-    await loadQuotes() // 最新の状態を取得
+    // 最新の状態を取得
+    const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
+    if (refreshedQuotes.value) {
+      store.quotes = refreshedQuotes.value
+    }
     isEditing.value = false
   } catch (err) {
     console.error('Failed to update quote:', err)
@@ -118,8 +131,8 @@ async function handleDelete() {
   }
 }
 
-onMounted(async () => {
-  await loadQuotes()
+onMounted(() => {
+  // サーバーサイドで既にデータを取得済みのため、loadQuotesは不要
   // データ読み込み後もquoteが見つからない場合のデバッグ
   if (!quote.value) {
     console.warn('Quote not found:', quoteId.value)
