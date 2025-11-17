@@ -39,12 +39,30 @@
 <script setup lang="ts">
 import { useQuotes } from '@/composables/useQuotes'
 import { useAuthors } from '@/composables/useAuthors'
+import { useQuotesStore } from '@/stores/quotes'
+import { useAuthorsStore } from '@/stores/authors'
 import type { Quote } from '@/types/quote'
+import type { Author } from '@/types/author'
 
 const route = useRoute()
 const router = useRouter()
-const { quotes, isLoading, error, loadQuotes } = useQuotes()
-const { authors, loadAuthors, getAuthor } = useAuthors()
+
+// サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
+
+const { quotes, isLoading, error } = useQuotes()
+const { authors, getAuthor } = useAuthors()
+const quotesStore = useQuotesStore()
+const authorsStore = useAuthorsStore()
+
+// サーバーサイドで取得したデータをストアに反映
+if (fetchedQuotes.value) {
+  quotesStore.quotes = fetchedQuotes.value
+}
+if (fetchedAuthors.value) {
+  authorsStore.authors = fetchedAuthors.value
+}
 
 // 動的ルートパラメータから著者IDを取得
 const authorId = computed(() => route.params.id as string)
@@ -60,9 +78,7 @@ function navigateToQuote(id: string) {
   router.push(`/quotes/${id}`)
 }
 
-onMounted(async () => {
-  await Promise.all([loadQuotes(), loadAuthors()])
-})
+// サーバーサイドで既にデータを取得済みのため、onMountedは不要
 </script>
 
 <style scoped>

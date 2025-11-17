@@ -1,5 +1,5 @@
 import type { Quote } from '@/types/quote'
-import { getQuotes } from '~/server/utils/quotes-storage'
+import { getQuotes } from '@/server/utils/quotes-storage'
 
 /**
  * GET /api/quotes/:id

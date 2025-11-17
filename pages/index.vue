@@ -22,7 +22,9 @@
         :[quoteIdAttr]="selectedQuote.id"
       >
         <p class="quoteText">{{ selectedQuote.text }}</p>
-        <p v-if="getAuthorName(selectedQuote)" class="quoteAuthor">— {{ getAuthorName(selectedQuote) }}</p>
+        <p v-if="getAuthorName(selectedQuote)" class="quoteAuthor">
+          — {{ getAuthorName(selectedQuote) }}
+        </p>
         <div v-if="selectedQuote.tags && selectedQuote.tags.length > 0" class="tags">
           <span v-for="tag in selectedQuote.tags" :key="tag" class="tag">{{ tag }}</span>
         </div>
@@ -45,10 +47,19 @@
 
 <script setup lang="ts">
 import { useQuotes } from '@/composables/useQuotes'
+import { useQuotesStore } from '@/stores/quotes'
 import { useSeededRandom } from '@/composables/useSeededRandom'
 import type { Quote } from '@/types/quote'
 
-const { quotes, loadQuotes, getAuthorName } = useQuotes()
+// サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { quotes, getAuthorName } = useQuotes()
+const store = useQuotesStore()
+
+// サーバーサイドで取得したデータをストアに反映
+if (fetchedQuotes.value) {
+  store.quotes = fetchedQuotes.value
+}
 
 const mood = ref(3)
 const selectedQuote = ref<Quote | null>(null)
@@ -113,9 +124,8 @@ watch([mood, quotes], () => {
   pickQuote()
 })
 
-onMounted(async () => {
-  // データの獲得
-  await loadQuotes()
+onMounted(() => {
+  // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
   pickQuote()
   // 可視状態に応じて自動切替を開始/停止
   document.addEventListener('visibilitychange', handleVisibilityChange)

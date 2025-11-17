@@ -51,8 +51,8 @@
   - `pages/quotes.vue`で`QuoteForm`コンポーネントを使用し、登録・編集の両方で共通化
 
   **技術的なポイント:**
-  - Vue 3のComposition API（`<script setup>`）を使用
-  - TypeScriptで型安全性を確保（`defineProps<Props>()`、`defineEmits<{}>()`）
+  - Vue 3のComposition API（`<script setup>`）を使用する
+  - TypeScriptで型安全性を確保する（`defineProps<Props>()`、`defineEmits<{}>()`）
   - Nuxt 3の自動インポート機能により、`components/`配下のコンポーネントは自動的にインポートされる
 
 - 双方向バインディングを理解して正しく使う事ができる
@@ -63,8 +63,8 @@
   - 各入力フィールド（text, author, tags）の変更を`update:modelValue`イベントで親に通知
 
   **技術的なポイント:**
-  - Vue 3の`v-model`は`modelValue`プロップと`update:modelValue`イベントの組み合わせ
-  - オブジェクト全体を`v-model`でバインドすることで、複数のフィールドを一度に管理
+  - Vue 3の`v-model`は`modelValue`プロップと`update:modelValue`イベントの組み合わせである
+  - オブジェクト全体を`v-model`でバインドすることで、複数のフィールドを一度に管理できる
   - タグ入力はカンマ区切りの文字列として扱い、内部で配列に変換してから親に渡す
 
   **`v-model`の仕組み（なぜ`modelValue`に自動的に渡されるのか）:**
@@ -101,9 +101,9 @@
   - 親コンポーネント（`pages/quotes.vue`）で`@submit`と`@cancel`イベントをハンドリング
 
   **技術的なポイント:**
-  - Vue 3では`defineEmits`でイベントを型安全に定義
-  - サブミット時はフォームの値（`formValue`）のみを親に渡し、親側で`addQuote`/`updateQuote`を実行
-  - 子コンポーネントはビジネスロジックを持たず、純粋にフォームの表示と値の管理のみを担当（関心の分離）
+  - Vue 3では`defineEmits`でイベントを型安全に定義する
+  - サブミット時はフォームの値（`formValue`）のみを親に渡し、親側で`addQuote`/`updateQuote`を実行する
+  - 子コンポーネントはビジネスロジックを持たず、純粋にフォームの表示と値の管理のみを担当する（関心の分離）
 
   **`defineEmits`の詳細解説:**
   
@@ -293,9 +293,9 @@
   - コンポーネント側は`const random = useSeededRandom(...)`で呼び出すだけ
 
   **技術的なポイント:**
-  - 状態を持たない処理をcomposableに切り出すことで、再利用性とテスト容易性が向上
-    - ちなみに状態をもつ、ってのはStoreから状態を取得したりする処理のこと（Storeなどの外部の状態に依存している処理）
-    - useSeededRandomは外部の状態に依存せず、引数から結果を返すだけなので「状態を持たない処理」
+  - 状態を持たない処理をcomposableに切り出すことで、再利用性とテスト容易性が向上する
+    - ちなみに状態をもつ、ってのはStoreから状態を取得したりする処理のことだ（Storeなどの外部の状態に依存している処理）
+    - useSeededRandomは外部の状態に依存せず、引数から結果を返すだけなので「状態を持たない処理」である
   - コンポーネントがシンプルになり、関心の分離が実現される
   - Nuxt 3では`composables/`配下のファイルは自動的にインポートされる
 
@@ -412,15 +412,15 @@
 - シンプルなルーティングを設定できる
 
   **ルーティングとは:**
-  - ルーティングとは、URL（アドレスバーのパス）と表示するページを対応付ける仕組みです
+  - ルーティングとは、URL（アドレスバーのパス）と表示するページを対応付ける仕組みである
   - 例：`/quotes`というURLにアクセスすると、名言一覧ページが表示される
-  - これにより、ユーザーはURLを直接入力したり、ブックマークしたりできます
+  - これにより、ユーザーはURLを直接入力したり、ブックマークしたりできる
 
   **Nuxt.jsのファイルベースルーティング:**
-  - Nuxt.jsでは、**ファイル構造がそのままルーティングになる**という特徴があります
-  - `pages/`ディレクトリ内のファイル構造が自動的にURLパスに変換されます
-  - 特別な設定ファイルは不要（自動的にルーティングが生成される）
-  - これにより、直感的で分かりやすいルーティングが実現できます
+  - Nuxt.jsでは、**ファイル構造がそのままルーティングになる**という特徴がある
+  - `pages/`ディレクトリ内のファイル構造が自動的にURLパスに変換される
+  - 特別な設定ファイルは不要である（自動的にルーティングが生成される）
+  - これにより、直感的で分かりやすいルーティングが実現できる
 
   **基本的なルーティングの仕組み:**
   ```
@@ -437,14 +437,14 @@
   - `pages/authors/index.vue` → `/authors`（著者一覧ページ）
 
   **`index.vue`の特別な役割:**
-  - `index.vue`は**特別なファイル名**で、URLには表示されません
+  - `index.vue`は**特別なファイル名**で、URLには表示されない
   - `pages/index.vue` → `/`（`index`という文字列はURLに含まれない）
   - `pages/authors/index.vue` → `/authors`（`index`という文字列はURLに含まれない）
   - 一方、`quotes.vue` → `/quotes`（ファイル名がそのままURLになる）
 
   **なぜ`index.vue`が特別なのか:**
-  - `index`は「そのディレクトリのデフォルトページ」を表す慣習的な名前
-  - Webサーバーでも`index.html`がデフォルトページとして扱われるのと同じ考え方
+  - `index`は「そのディレクトリのデフォルトページ」を表す慣習的な名前である
+  - Webサーバーでも`index.html`がデフォルトページとして扱われるのと同じ考え方だ
   - これにより、ディレクトリ名だけでアクセスできる（`/authors`で`/authors/index`にアクセスできる）
 
   **ファイル名とURLの対応関係:**
@@ -461,7 +461,7 @@
   - Nuxt 3では`pages/`配下の`.vue`ファイルが自動的にルートとして認識される
   - `index.vue`は親ディレクトリのルートになる（`pages/authors/index.vue` → `/authors`）
   - `index.vue`以外のファイル名は、そのままURLパスになる
-  - `NuxtLink`コンポーネントでページ間のナビゲーションを実装
+  - `NuxtLink`コンポーネントでページ間のナビゲーションを実装する
 
   **基本的な使い方:**
   ```vue
@@ -471,20 +471,20 @@
   ```
 
   **NuxtLinkとは:**
-  - HTMLの`<a>`タグの代わりに使用するNuxt.jsのコンポーネント
-  - ページ遷移が高速（SPAのため、ページ全体を再読み込みしない）
-  - `to`属性で遷移先のURLを指定
+  - HTMLの`<a>`タグの代わりに使用するNuxt.jsのコンポーネントである
+  - ページ遷移が高速だ（SPAのため、ページ全体を再読み込みしない）
+  - `to`属性で遷移先のURLを指定する
 
 - 動的ルートマッチが定義できる
 
   **動的ルートとは:**
-  - 動的ルートとは、URLの一部が変わるルーティングのことです
+  - 動的ルートとは、URLの一部が変わるルーティングのことである
   - 例：`/quotes/123`、`/quotes/456`のように、名言のIDが変わる
-  - 固定のURL（`/quotes`）ではなく、可変部分（`123`、`456`）を含むURL
-  - これにより、1つのページコンポーネントで複数のデータを表示できます
+  - 固定のURL（`/quotes`）ではなく、可変部分（`123`、`456`）を含むURLである
+  - これにより、1つのページコンポーネントで複数のデータを表示できる
 
   **なぜ動的ルートが必要か:**
-  - 名言が100個ある場合、100個のページファイルを作るのは非効率
+  - 名言が100個ある場合、100個のページファイルを作るのは非効率である
   - 動的ルートを使えば、1つのファイル（`[id].vue`）で全ての名言を表示できる
   - URLからIDを取得して、そのIDに対応するデータを表示する
 
@@ -505,7 +505,7 @@
   **技術的なポイント:**
   - ファイル名を`[id].vue`のように角括弧`[]`で囲むと、動的ルートになる
   - `[id]`の`id`はパラメータ名で、`route.params.id`で取得できる
-  - `useRoute()`で現在のルート情報（パラメータ、クエリ、パスなど）を取得
+  - `useRoute()`で現在のルート情報（パラメータ、クエリ、パスなど）を取得する
   - `useRouter()`でプログラムからページ遷移（`router.push()`など）ができる
 
   **実際の使用例:**
@@ -536,31 +536,31 @@
 
   **なぜ`[id]`という記法なのか:**
   - Nuxt.jsの標準的な命名規則で、角括弧`[]`が動的パラメータを表す
-  - この記法は変更できない（Nuxt.jsの仕様）
-  - 多くのプロジェクトで使用されている標準的な記法
-  - `[id]`の`id`は任意の名前（`[userId]`、`[postId]`など）に変更可能
+  - この記法は変更できない（Nuxt.jsの仕様である）
+  - 多くのプロジェクトで使用されている標準的な記法だ
+  - `[id]`の`id`は任意の名前（`[userId]`、`[postId]`など）に変更可能である
 
   **動的ルートのマッチング:**
-  - `[id].vue` → 任意の文字列にマッチ（例：`/quotes/123`、`/quotes/abc`）
+  - `[id].vue` → 任意の文字列にマッチする（例：`/quotes/123`、`/quotes/abc`）
   - `[id]`はパラメータ名で、`route.params.id`で取得できる
-  - 複数の動的パラメータも可能（例：`[userId]/[postId].vue` → `/users/123/posts/456`）
+  - 複数の動的パラメータも可能である（例：`[userId]/[postId].vue` → `/users/123/posts/456`）
 
   **初心者向けの理解:**
-  - `[id]`は「ここに何かが入る」というプレースホルダー（置き換え可能な部分）
+  - `[id]`は「ここに何かが入る」というプレースホルダー（置き換え可能な部分）である
   - 実際のURLでは、`[id]`の部分が具体的な値（例：`abc123`）に置き換わる
   - その値は`route.params.id`で取得できる
 
 - ネストされたルーティングの定義ができる
 
   **ネストされたルーティングとは:**
-  - ネスト（入れ子）されたルーティングとは、親子関係のあるリソースを表現するルーティングです
-  - 例：`/authors/123/quotes` → 「著者123の名言一覧」という意味
+  - ネスト（入れ子）されたルーティングとは、親子関係のあるリソースを表現するルーティングである
+  - 例：`/authors/123/quotes` → 「著者123の名言一覧」という意味である
   - ディレクトリ構造でネストを表現する（ディレクトリの中にディレクトリを作る）
-  - 例：`user` → `posts`のようにhas_manyな関係（1対多の関係）を表現
+  - 例：`user` → `posts`のようにhas_manyな関係（1対多の関係）を表現する
 
   **なぜネストされたルーティングが必要か:**
   - リソースの階層関係をURLで表現できる
-  - 例：「著者」という親リソースと、「その著者の名言」という子リソース
+  - 例：「著者」という親リソースと、「その著者の名言」という子リソースである
   - URLが直感的で、何を表示しているかが分かりやすい
 
   **実装内容:**
@@ -574,7 +574,7 @@
   - `pages/authors/[id]/quotes.vue`は以下の構造を表す：
     - `/authors` → 著者一覧
     - `/authors/:id` → 特定の著者（動的パラメータ、実際の値は著者ID）
-    - `/authors/:id/quotes` → その著者の名言一覧（ネストされたルート）
+    - `/authors/:id/quotes` → その著者の名言一覧（ネストされたルート）である
 
   **実際の使用例:**
   ```vue
@@ -621,8 +621,8 @@
   - これにより、「著者Aの名言一覧」「著者Bの名言一覧」を1つのファイルで表示できる
 
   **IDベース設計のメリット（このプロジェクト）:**
-  - 著者IDはUUID（例：`01ARZ3NDEKTSV4RRFFQ69G5FAV`）なので、エンコーディング不要
-  - 特殊文字を含まないため、URLがシンプル
+  - 著者IDはUUID（例：`01ARZ3NDEKTSV4RRFFQ69G5FAV`）なので、エンコーディング不要である
+  - 特殊文字を含まないため、URLがシンプルだ
   - 著者名が変更されてもURLが変わらない（安定性）
 
   **CRUD画面のルーティング設計例:**
@@ -652,7 +652,7 @@
 
   **URL設計の選択肢: ID vs 名前（スラッグ）**
   
-  一般的なRESTful APIの設計では、以下の2つのパターンがあります：
+  一般的なRESTful APIの設計では、以下の2つのパターンがある：
   
   **1. IDを使う場合（このプロジェクトで採用）**
   ```
@@ -688,7 +688,7 @@
   
   **3. このプロジェクトでの選択**
   
-  このプロジェクトでは、**IDベースの設計を採用**しています：
+  このプロジェクトでは、**IDベースの設計を採用**している：
   - `/authors/{著者ID}/quotes`
   - 例：`/authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes`
   
@@ -706,7 +706,7 @@
 
   **メリット:**
   - URLが直感的で、リソースの階層関係が明確になる
-  - RESTfulな設計になり、SEOにも有利
+  - RESTfulな設計になり、SEOにも有利である
   - ブックマークや共有がしやすい
   - ブラウザの戻る/進むボタンが正しく動作する
 
@@ -733,9 +733,9 @@
 
   **初心者向けの理解:**
   - `:to`の前に`:`（コロン）を付けると、JavaScriptの式として評価される
-  - `:to="'/quotes'"` → 文字列リテラル（固定のURL）
-  - `:to="`/quotes/${quote.id}`"` → テンプレートリテラル（変数を埋め込む）
-  - `:to="{ path: '/quotes', query: { page: 1 } }"` → オブジェクト形式（クエリパラメータ付き）
+  - `:to="'/quotes'"` → 文字列リテラル（固定のURL）である
+  - `:to="`/quotes/${quote.id}`"` → テンプレートリテラル（変数を埋め込む）である
+  - `:to="{ path: '/quotes', query: { page: 1 } }"` → オブジェクト形式（クエリパラメータ付き）である
 
   **useRoute()とuseRouter()の違い:**
   
@@ -787,11 +787,11 @@
   ```
 
   **初心者向けの理解:**
-  - `useRoute()`は「現在のページの情報を取得する」ための関数
-  - `useRouter()`は「ページを移動する」ための関数
-  - `route.params`はURLの一部として含まれる値（例：`/quotes/123`の`123`）
-  - `route.query`はURLの`?`以降の値（例：`/quotes?page=1`の`page=1`）
-  - `router.push()`はリンクをクリックした時と同じ動作（履歴に残る）
+  - `useRoute()`は「現在のページの情報を取得する」ための関数である
+  - `useRouter()`は「ページを移動する」ための関数である
+  - `route.params`はURLの一部として含まれる値である（例：`/quotes/123`の`123`）
+  - `route.query`はURLの`?`以降の値である（例：`/quotes?page=1`の`page=1`）
+  - `router.push()`はリンクをクリックした時と同じ動作だ（履歴に残る）
   - `router.replace()`は現在のページを置き換える（履歴に残らない）
 
   **実際の使用例:**
@@ -824,17 +824,17 @@
 - `ref`と`computed`の違いと使い分け
 
   **`ref`と`computed`とは:**
-  - どちらもVue 3のリアクティビティシステムの一部
+  - どちらもVue 3のリアクティビティシステムの一部である
   - 値が変わると、それを使っている画面が自動で更新される（リアクティビティ）
   - ただし、用途と動作が異なる
 
   **`ref`とは:**
-  - 手動で値を変更するためのリアクティブな変数
+  - 手動で値を変更するためのリアクティブな変数である
   - 自分自身の値が変わると、それを使っている画面が自動で更新される
   - 他の値の変更を監視して自分を更新する機能はない
 
   **`computed`とは:**
-  - 他の値から自動計算されるリアクティブな値
+  - 他の値から自動計算されるリアクティブな値である
   - 依存する値が変わると、自動で再計算される
   - 他の値の変更を監視して自分を更新する機能がある
 
@@ -850,8 +850,8 @@
   ```
 
   **`.value`が必要な理由:**
-  - `<script>`内では、`ref`や`computed`で作成した値にアクセスする際は`.value`が必要
-  - `<template>`内では、`.value`は不要（自動的に展開される）
+  - `<script>`内では、`ref`や`computed`で作成した値にアクセスする際は`.value`が必要である
+  - `<template>`内では、`.value`は不要だ（自動的に展開される）
 
   ```typescript
   // <script>内
@@ -1190,6 +1190,353 @@
   - **`watch`**: 
     - `pages/index.vue`（`mood`と`quotes`の監視）
     - `components/QuoteForm.vue`（`props.modelValue`の監視 - oldValue/newValue比較）
+
+---
+
+## Nuxtのユニバーサルレンダリング
+
+**評価項目:**
+- Nuxtのユニバーサルレンダリングを使って簡単なアプリケーションを作成できる
+
+### ユニバーサルレンダリングとは
+
+**ユニバーサルレンダリング（Universal Rendering）**とは、サーバーサイドとクライアントサイドの両方で同じアプリケーションを実行できることである。Nuxt.jsでは、デフォルトでユニバーサルレンダリングが有効になっている。
+
+### 3つのレンダリング方式の比較
+
+#### 1. CSR（Client-Side Rendering） - 変更前
+
+```
+【ブラウザ】
+1. 空のHTMLを受け取る
+2. JavaScriptを実行
+3. localStorageからデータを取得
+4. 画面を表示
+```
+
+**問題点:**
+- 初回表示が遅い（JavaScriptの実行を待つ必要がある）
+- SEOに不利（検索エンジンが空のHTMLしか見られない）
+
+#### 2. SSR（Server-Side Rendering） - 変更後
+
+```
+【サーバー】
+1. リクエストを受け取る
+2. データを取得（server/utils/quotes-storage.ts）
+3. HTMLを生成（データが入った状態）
+4. ブラウザに送信
+
+【ブラウザ】
+1. 完成したHTMLを受け取る
+2. すぐに表示できる！
+```
+
+**メリット:**
+- 初回表示が速い（サーバーでHTMLが完成している）
+- SEOに有利（検索エンジンが完成したHTMLを見られる）
+
+#### 3. ユニバーサルレンダリング（SSR + CSR） - 今回の実装
+
+```
+【初回アクセス時 - SSR】
+1. ブラウザ → サーバーにリクエスト
+2. サーバーがデータを取得
+3. サーバーがHTMLを生成
+4. 完成したHTMLを受け取る
+5. すぐに表示できる！
+
+【2回目以降のページ遷移 - CSR（SPA）】
+1. JavaScriptでページ遷移
+2. APIからデータを取得
+3. 画面を更新（ページ全体を再読み込みしない）
+```
+
+**メリット:**
+- 初回表示が速い（SSR）
+- 2回目以降も速い（SPA）
+- SEOに有利
+
+### 本アプリでの実装
+
+#### 1. useFetchによるデータ取得
+
+**実装箇所: `pages/index.vue`**
+
+```typescript
+// サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { quotes, getAuthorName } = useQuotes()
+const store = useQuotesStore()
+
+// サーバーサイドで取得したデータをストアに反映
+if (fetchedQuotes.value) {
+  store.quotes = fetchedQuotes.value
+}
+```
+
+**`useFetch`の動作:**
+- **サーバーサイド**: `/api/quotes`エンドポイントを呼び出し、サーバー上のメモリからデータを取得
+- **クライアントサイド**: 同じエンドポイントを呼び出し、APIからデータを取得
+
+**重要なポイント:**
+- `await`を使うことで、サーバーサイドでデータ取得が完了してからHTMLを生成
+- クライアントサイドでも同じコードが実行される（ハイドレーション）
+
+#### 2. サーバーAPIルート
+
+**実装箇所: `server/api/quotes/index.get.ts`**
+
+```typescript
+import type { Quote } from '@/types/quote'
+import { getQuotes } from '~/server/utils/quotes-storage'
+
+/**
+ * GET /api/quotes
+ * 名言一覧を取得
+ */
+export default defineEventHandler(async (event): Promise<Quote[]> => {
+  return getQuotes()
+})
+```
+
+**動作:**
+- サーバーサイドで実行される
+- `server/utils/quotes-storage.ts`からメモリ上のデータを取得する
+- JSON形式でレスポンスを返す
+
+**サーバーAPIルートとページコンポーネントの関係:**
+
+`pages/index.vue`で`useFetch('/api/quotes')`を実行すると、Nuxt 3が自動的に`server/api/quotes/index.get.ts`を呼び出す。
+
+**データの流れ:**
+
+```
+pages/index.vue (55行目)
+  ↓
+useFetch('/api/quotes') を実行
+  ↓
+Nuxt 3が自動的にマッピング
+  ↓
+server/api/quotes/index.get.ts が実行される
+  ↓
+getQuotes() を呼び出す
+  ↓
+server/utils/quotes-storage.ts からデータを取得
+  ↓
+データが useFetch に返される
+  ↓
+pages/index.vue (60-62行目)
+  ↓
+store.quotes = fetchedQuotes.value でストアに反映
+  ↓
+HTMLを生成（データが入った状態）
+  ↓
+ブラウザに送信
+```
+
+**Nuxt 3の自動マッピング:**
+
+Nuxt 3は`server/api/`配下のファイルを自動的にAPIルートとして認識する。
+
+```
+URL: /api/quotes
+    ↓
+ファイル: server/api/quotes/index.get.ts
+```
+
+**ファイル名の規則:**
+
+```
+server/api/quotes/index.get.ts
+                    ↑      ↑
+                 ディレクトリ  HTTPメソッド
+```
+
+- `index.get.ts` → `GET /api/quotes`
+- `index.post.ts` → `POST /api/quotes`
+- `[id].get.ts` → `GET /api/quotes/:id`
+- `[id].put.ts` → `PUT /api/quotes/:id`
+- `[id].delete.ts` → `DELETE /api/quotes/:id`
+
+**`defineEventHandler`の役割:**
+
+```typescript
+export default defineEventHandler(async (event): Promise<Quote[]> => {
+  return getQuotes()
+})
+```
+
+この関数がAPIエンドポイントの実装になる。返り値がJSONとしてクライアントに返される。
+
+**ページURLとAPIエンドポイントURLの違い:**
+
+| URL | 種類 | 説明 |
+|-----|------|------|
+| `/quotes` | ページURL | ブラウザのURLバーに表示される（ルーティング） |
+| `/api/quotes` | APIエンドポイントURL | ブラウザのURLバーには表示されない（内部的な通信） |
+
+**重要なポイント:**
+
+- `/quotes`はページのURLで、ユーザーがアクセスするURLである
+- `/api/quotes`はAPIエンドポイントのURLで、`useFetch('/api/quotes')`が内部的に呼び出す
+- `useFetch('/api/quotes')`を実行しても、ブラウザのURLバーは`/quotes`のままである
+- これは正しい動作で、ページURLとAPIエンドポイントURLは別物である
+
+**実際の動作例:**
+
+1. ユーザーが`http://localhost:3000/quotes`にアクセス
+2. ブラウザのURLバーには`/quotes`と表示される
+3. `pages/quotes/index.vue`が実行される
+4. `useFetch('/api/quotes')`が内部的に`/api/quotes`エンドポイントを呼び出す
+5. `server/api/quotes/index.get.ts`が実行される
+6. データが取得され、ページに表示される
+
+#### 3. サーバーサイドのストレージ
+
+**実装箇所: `server/utils/quotes-storage.ts`**
+
+```typescript
+import type { Quote } from '@/types/quote'
+
+/**
+ * メモリ上に名言データを保存する簡易ストレージ
+ * サーバー再起動でデータは消える（学習用）
+ */
+let quotesStorage: Quote[] = []
+
+/**
+ * 名言一覧を取得
+ */
+export function getQuotes(): Quote[] {
+  return [...quotesStorage]
+}
+```
+
+**動作:**
+- サーバーのメモリ上にデータを保存する
+- サーバーサイドでのみ実行される
+- サーバー再起動でデータは消える（学習用の簡易実装である）
+
+#### 4. ストアへの反映
+
+**実装箇所: 各ページコンポーネント**
+
+```typescript
+// サーバーサイドで取得したデータをストアに反映
+if (fetchedQuotes.value) {
+  store.quotes = fetchedQuotes.value
+}
+```
+
+**動作:**
+- サーバーサイドで取得したデータをPiniaストアに反映する
+- クライアントサイドでも同じストアが使われる（ハイドレーション）
+
+### データの流れ
+
+#### 初回アクセス時（SSR）
+
+```
+1. ブラウザ → サーバーにリクエスト（GET /）
+2. サーバー側で pages/index.vue を実行
+3. useFetch('/api/quotes') が実行される
+4. server/api/quotes/index.get.ts が実行される
+5. server/utils/quotes-storage.ts からデータを取得
+6. データが入ったHTMLを生成
+7. ブラウザに送信
+8. ブラウザがHTMLを表示（すぐに表示できる！）
+9. JavaScriptが実行され、ハイドレーション（クライアントサイドでも同じ状態にする）
+```
+
+#### 2回目以降のページ遷移（CSR / SPA）
+
+```
+1. ユーザーがリンクをクリック
+2. JavaScriptでページ遷移（ページ全体を再読み込みしない）
+3. 新しいページコンポーネントが実行される
+4. useFetch('/api/quotes') が実行される（クライアントサイド）
+5. /api/quotes エンドポイントからデータを取得
+6. 画面を更新
+```
+
+### 本アプリでの実装箇所
+
+#### 1. pages/index.vue（トップページ）
+
+```typescript
+// サーバーサイドでもデータを取得
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+```
+
+#### 2. pages/quotes/index.vue（名言一覧）
+
+```typescript
+// サーバーサイドでもデータを取得
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+```
+
+#### 3. pages/authors/index.vue（著者一覧）
+
+```typescript
+// サーバーサイドでもデータを取得
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
+```
+
+#### 4. pages/authors/[id]/quotes.vue（著者ごとの名言一覧）
+
+```typescript
+// サーバーサイドでもデータを取得
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
+```
+
+#### 5. pages/quotes/[id].vue（名言詳細）
+
+```typescript
+// サーバーサイドでもデータを取得
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+```
+
+### クライアントサイドのみの処理
+
+**実装箇所: `pages/index.vue`**
+
+```typescript
+onMounted(() => {
+  // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
+  pickQuote()
+  // 可視状態に応じて自動切替を開始/停止
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  if (!document.hidden) startAutoRotate()
+})
+```
+
+**動作:**
+- `onMounted`はクライアントサイドでのみ実行される
+- サーバーサイドでは実行されない（`document`や`window`が存在しないため）
+- 自動ローテーションやイベントリスナーなど、ブラウザでのみ必要な処理を実行する
+
+### まとめ
+
+| 項目 | 変更前 | 変更後 |
+|------|--------|--------|
+| **データ取得** | クライアントサイドのみ（localStorage） | サーバーサイドでも取得可能（API経由） |
+| **初回表示** | 遅い（JavaScriptの実行を待つ） | 速い（サーバーでHTMLが完成） |
+| **SEO** | 不利（空のHTML） | 有利（完成したHTML） |
+| **ページ遷移** | ページ全体を再読み込み | SPA（ページ全体を再読み込みしない） |
+| **データ保存** | localStorage（クライアント） | サーバーメモリ（サーバー） + localStorage（クライアント） |
+
+**本アプリの特徴:**
+- ✅ サーバーサイドでデータを取得してHTMLを生成（SSR）
+- ✅ クライアントサイドでも同じコードが実行される（ハイドレーション）
+- ✅ 2回目以降のページ遷移はSPAとして動作（CSR）
+- ✅ SEOに有利（完成したHTMLを検索エンジンが読める）
+
+これにより、**ユニバーサルレンダリング**を実現し、初回表示が速く、SEOにも有利なアプリケーションになった。
+
+---
 
 **自分的によく学んどいた方がいいと思うこと**
 - Vue2とVue3の大きな違いは？

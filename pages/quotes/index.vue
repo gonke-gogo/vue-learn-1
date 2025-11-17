@@ -69,12 +69,21 @@
 
 <script setup lang="ts">
 import { useQuotes } from '@/composables/useQuotes'
+import { useQuotesStore } from '@/stores/quotes'
 import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
 
 const route = useRoute()
-const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote, getAuthorName } =
-  useQuotes()
+
+// サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
+const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { quotes, isLoading, error, addQuote, updateQuote, removeQuote, getAuthorName } = useQuotes()
+const store = useQuotesStore()
+
+// サーバーサイドで取得したデータをストアに反映
+if (fetchedQuotes.value) {
+  store.quotes = fetchedQuotes.value
+}
 
 const showAddForm = ref(false)
 const editingQuote = ref<Quote | null>(null)
@@ -153,9 +162,9 @@ async function handleDelete(id: string) {
 }
 
 onMounted(async () => {
-  await loadQuotes()
+  // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
   if (quotes.value.length === 0) {
-    // 初期データを投入
+    // 初期データを投入（クライアントサイドでのみ）
     for (const seed of seedQuotes) {
       try {
         await addQuote(seed)
@@ -163,7 +172,11 @@ onMounted(async () => {
         console.error('Failed to seed quote:', err)
       }
     }
-    await loadQuotes()
+    // データを再取得
+    const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
+    if (refreshedQuotes.value) {
+      store.quotes = refreshedQuotes.value
+    }
   }
 
   // 編集モードのクエリパラメータをチェック
