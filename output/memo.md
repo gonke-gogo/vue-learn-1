@@ -957,6 +957,240 @@
   - 他の値から自動計算される値には`computed`を使う
   - 手動で値を変更する値には`ref`を使う
 
+- `ref` / `reactive` / `computed` / `watch` を使ったステート管理と使い分け
+
+  **評価項目:**
+  - `ref` / `reactive` / `computed` / `watch` を使ったステート管理ができる
+  - 上記の使い分けを正しくできる
+  - `computed`の場合は依存する値の変更に応じてデコレートしたり、計算する処理を記載しておく
+  - `watch`を使い親コンポーネントのpropsの値変更を検知して、`oldValue`と`newValue`を比較しつつ条件によって処理を書き分ける
+
+  **各APIの概要:**
+
+  | API | 用途 | 特徴 |
+  |-----|------|------|
+  | `ref` | プリミティブ値やオブジェクトをリアクティブにする | `.value`でアクセス、オブジェクト全体を置き換え可能 |
+  | `reactive` | オブジェクトをリアクティブにする | 直接プロパティにアクセス、オブジェクト全体の置き換え不可 |
+  | `computed` | 他の値から自動計算される値 | 依存する値が変わると自動で再計算 |
+  | `watch` | 値の変更を監視して処理を実行 | `oldValue`と`newValue`を比較できる |
+
+  **1. `ref`の使用例（本プロジェクト）:**
+
+  ```typescript
+  // pages/quotes/index.vue
+  const showAddForm = ref(false)  // フォームの表示/非表示を管理
+  const editingQuote = ref<Quote | null>(null)  // 編集中の名言を管理
+
+  // 値の変更
+  showAddForm.value = true
+  editingQuote.value = quote
+  ```
+
+  **使用場面:**
+  - プリミティブ値（`string`, `number`, `boolean`）を管理する場合
+  - 小さなオブジェクトで、全体を置き換えることがある場合
+  - 手動で値を変更する必要がある場合
+
+  **2. `reactive`の使用例（本プロジェクト）:**
+
+  ```typescript
+  // pages/quotes/index.vue
+  const form = reactive({
+    text: '',
+    authorId: '',
+    tags: [] as string[],
+  })
+
+  // 個別のプロパティを直接更新（.value が不要）
+  form.text = '新しいテキスト'
+  form.authorId = '新しいID'
+  form.tags = ['タグ1', 'タグ2']
+  ```
+
+  **使用場面:**
+  - 大きなオブジェクトで、プロパティを頻繁に個別に更新する場合
+  - ネストしたオブジェクトを扱う場合
+  - オブジェクトの構造が固定されていて、全体を置き換えることがない場合
+
+  **`ref`と`reactive`の使い分け:**
+
+  | ケース | 推奨 | 理由 |
+  |--------|------|------|
+  | プリミティブ値 | `ref` | `reactive`は使えない |
+  | 小さなオブジェクト（2-3個のプロパティ） | `ref` | どちらでも良いが、`ref`の方が一般的 |
+  | 大きなオブジェクト（10個以上のプロパティ） | `reactive` | `.value`が多くて煩雑になる |
+  | 頻繁に個別のプロパティを更新 | `reactive` | `.value`が不要でシンプル |
+  | オブジェクト全体を置き換えることが多い | `ref` | `reactive`では置き換えができない |
+
+  **3. `computed`の使用例（本プロジェクト）:**
+
+  **例1: 依存する値の変更に応じて計算する処理**
+
+  ```typescript
+  // pages/authors/[id]/quotes.vue
+  const authorQuotes = computed(() => {
+    return quotes.value.filter((quote) => quote.authorId === authorId.value) as Quote[]
+  })
+  ```
+
+  - 依存: `quotes.value`, `authorId.value`
+  - 処理: フィルタリング（計算処理）
+  - `quotes`や`authorId`が変わると自動で再計算される
+
+  **例2: 依存する値の変更に応じてデコレート・計算する処理**
+
+  ```typescript
+  // pages/authors/index.vue
+  const authorsWithCount = computed(() => {
+    // 1. 計算処理：名言数を集計
+    const quoteCountMap = new Map<string, number>()
+    quotes.value.forEach((quote) => {
+      if (quote.authorId) {
+        const count = quoteCountMap.get(quote.authorId) || 0
+        quoteCountMap.set(quote.authorId, count + 1)
+      }
+    })
+
+    // 2. デコレート処理：著者オブジェクトに名言数を追加
+    return authors.value
+      .map((author) => ({
+        ...author,  // 元のプロパティを保持
+        quoteCount: quoteCountMap.get(author.id) || 0,  // 新しいプロパティを追加（デコレート）
+      }))
+      // 3. 計算処理：フィルタリング
+      .filter((author) => author.quoteCount > 0)
+      // 4. 計算処理：ソート
+      .sort((a, b) => b.quoteCount - a.quoteCount)
+  })
+  ```
+
+  **デコレートとは:**
+  - 既存のオブジェクトに新しいプロパティや情報を追加して拡張すること
+  - この例では、元の`author`オブジェクトに`quoteCount`プロパティを追加している
+
+  **処理の流れ:**
+  1. **計算**: 名言数を集計（`quoteCountMap`を作成）
+  2. **デコレート**: 著者オブジェクトに`quoteCount`を追加
+  3. **計算**: 名言がある著者のみフィルタリング
+  4. **計算**: 名言数でソート
+
+  **依存する値:**
+  - `quotes.value`: 名言データが変わると再計算
+  - `authors.value`: 著者データが変わると再計算
+
+  **例3: データの変換（デコレート）**
+
+  ```typescript
+  // components/QuoteForm.vue
+  const tagsInput = computed({
+    get: () => (props.modelValue.tags || []).join(', '),  // 配列を文字列に変換
+    set: (value: string) => {
+      const tags = parseTags(value)  // 文字列を配列に変換
+      emit('update:modelValue', {
+        ...props.modelValue,
+        tags,
+      })
+    },
+  })
+  ```
+
+  - 依存: `props.modelValue.tags`
+  - 処理: 配列と文字列の相互変換（デコレート・計算処理）
+
+  **4. `watch`の使用例（本プロジェクト）:**
+
+  **例1: 複数の値を監視**
+
+  ```typescript
+  // pages/index.vue
+  watch([mood, quotes], () => {
+    salt.value = 0
+    pickQuote()
+  })
+  ```
+
+  - `mood`と`quotes`のどちらかが変わると実行される
+
+  **例2: propsの変更を検知して`oldValue`と`newValue`を比較（評価項目の要件）**
+
+  ```typescript
+  // components/QuoteForm.vue
+  watch(
+    () => props.modelValue,
+    (newValue, oldValue) => {
+      // 編集モードがtrueの場合のみ処理
+      if (!props.isEditMode) return
+
+      // oldValueとnewValueを比較して、変更があった場合のみ処理
+      if (oldValue && newValue) {
+        // テキストが変更された場合
+        if (oldValue.text !== newValue.text) {
+          console.log('テキストが変更されました:', {
+            old: oldValue.text,
+            new: newValue.text,
+          })
+        }
+
+        // 著者IDが変更された場合
+        if (oldValue.authorId !== newValue.authorId) {
+          console.log('著者IDが変更されました:', {
+            old: oldValue.authorId,
+            new: newValue.authorId,
+          })
+          // 条件によって処理を分岐
+          if (newValue.authorId && !oldValue.authorId) {
+            // 新しく著者IDが設定された場合のみ、著者一覧を再読み込み
+            loadAuthors()
+          }
+        }
+
+        // タグが変更された場合
+        const oldTags = (oldValue.tags || []).join(',')
+        const newTags = (newValue.tags || []).join(',')
+        if (oldTags !== newTags) {
+          console.log('タグが変更されました:', {
+            old: oldValue.tags,
+            new: newValue.tags,
+          })
+        }
+      }
+    },
+    { deep: true } // オブジェクトの深い監視
+  )
+  ```
+
+  **この実装のポイント:**
+  1. **propsの変更を検知**: `() => props.modelValue`で監視対象を指定
+  2. **oldValueとnewValueを比較**: コールバック関数の第2引数と第3引数で取得
+  3. **条件によって処理を分岐**: 
+     - テキストが変更された場合
+     - 著者IDが変更された場合（さらに条件分岐：新しく設定された場合のみ`loadAuthors()`を実行）
+     - タグが変更された場合
+  4. **深い監視**: `{ deep: true }`でオブジェクトのネストされたプロパティも監視
+
+  **使い分けのまとめ:**
+
+  | 用途 | 使用するAPI | 理由 |
+  |------|------------|------|
+  | プリミティブ値を管理 | `ref` | `reactive`は使えない |
+  | 手動で値を変更する | `ref` または `reactive` | オブジェクトの大きさや更新方法で選択 |
+  | 他の値から自動計算 | `computed` | 依存する値が変わると自動で再計算 |
+  | 値の変更を監視して処理を実行 | `watch` | `oldValue`と`newValue`を比較できる |
+  | 依存する値の変更に応じてデコレート・計算 | `computed` | 自動で再計算される |
+  | propsの変更を検知して条件分岐 | `watch` | `oldValue`と`newValue`を比較できる |
+
+  **本プロジェクトでの実装箇所まとめ:**
+
+  - **`ref`**: `pages/quotes/index.vue`（`showAddForm`, `editingQuote`）、`pages/index.vue`（`mood`, `selectedQuote`）など
+  - **`reactive`**: `pages/quotes/index.vue`（`form`）
+  - **`computed`**: 
+    - `pages/authors/index.vue`（`authorsWithCount` - デコレート・計算処理）
+    - `pages/authors/[id]/quotes.vue`（`authorQuotes` - フィルタリング）
+    - `components/QuoteForm.vue`（`tagsInput` - データ変換）
+  - **`watch`**: 
+    - `pages/index.vue`（`mood`と`quotes`の監視）
+    - `components/QuoteForm.vue`（`props.modelValue`の監視 - oldValue/newValue比較）
+
 **自分的によく学んどいた方がいいと思うこと**
 - Vue2とVue3の大きな違いは？
 - そもそもTypeScriptがいいってなってるのはなんでなの？

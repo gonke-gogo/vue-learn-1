@@ -44,7 +44,9 @@
         >
           <div class="quoteContent">
             <p class="quoteText">{{ quote.text }}</p>
-            <p v-if="getAuthorName(quote as Quote)" class="quoteAuthor">— {{ getAuthorName(quote as Quote) }}</p>
+            <p v-if="getAuthorName(quote as Quote)" class="quoteAuthor">
+              — {{ getAuthorName(quote as Quote) }}
+            </p>
             <div v-if="quote.tags && quote.tags.length > 0" class="tags">
               <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
             </div>
@@ -53,13 +55,7 @@
             </p>
           </div>
           <div class="quoteActions">
-            <NuxtLink
-              :to="`/quotes/${quote.id}`"
-              class="buttonSmall"
-              @click.stop
-            >
-              詳細
-            </NuxtLink>
+            <NuxtLink :to="`/quotes/${quote.id}`" class="buttonSmall" @click.stop> 詳細 </NuxtLink>
             <button @click.stop="startEdit(quote as Quote)" class="buttonSmall">編集</button>
             <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
               削除
@@ -77,7 +73,8 @@ import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
 
 const route = useRoute()
-const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote, getAuthorName } = useQuotes()
+const { quotes, isLoading, error, loadQuotes, addQuote, updateQuote, removeQuote, getAuthorName } =
+  useQuotes()
 
 const showAddForm = ref(false)
 const editingQuote = ref<Quote | null>(null)
@@ -92,6 +89,7 @@ const dynamicEvent = computed(() => {
 })
 
 // フォームの値（双方向バインディング用）
+// refを使った例：v-modelがそのまま使える
 const form = ref({
   text: '',
   authorId: '',
@@ -99,13 +97,19 @@ const form = ref({
 })
 
 function resetForm() {
-  form.value = { text: '', authorId: '', tags: [] }
+  // refを使っている場合、.valueでオブジェクト全体を置き換え
+  form.value = {
+    text: '',
+    authorId: '',
+    tags: [],
+  }
   editingQuote.value = null
   showAddForm.value = false
 }
 
 function startEdit(quote: Quote) {
   editingQuote.value = quote
+  // refを使っている場合、.valueでオブジェクト全体を置き換え
   form.value = {
     text: quote.text,
     authorId: quote.authorId || '',

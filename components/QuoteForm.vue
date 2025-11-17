@@ -52,6 +52,7 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
 import type { Quote } from '@/types/quote'
 import { useAuthors } from '@/composables/useAuthors'
 
@@ -131,8 +132,16 @@ function updateTagsInput(event: Event) {
 
 // サブミットハンドラ（EventEmitterでvalueのみを親に投げる）
 function handleSubmit() {
+  // バリデーション：テキストが空の場合は送信しない
+  const text = props.modelValue.text || ''
+  const trimmedText = text.trim()
+  if (!trimmedText) {
+    alert('名言を入力してください')
+    return
+  }
+
   const formValue = {
-    text: props.modelValue.text,
+    text: trimmedText, // 前後の空白を削除
     authorId: props.modelValue.authorId || undefined,
     tags: props.modelValue.tags || [],
   }
@@ -143,6 +152,49 @@ function handleSubmit() {
 function handleCancel() {
   emit('cancel')
 }
+
+// watchでpropsの変更を検知し、oldValueとnewValueを比較する処理
+watch(
+  () => props.modelValue,
+  (newValue, oldValue) => {
+    // 編集モードがtrueの場合のみ処理
+    if (!props.isEditMode) return
+
+    // oldValueとnewValueを比較して、変更があった場合のみ処理
+    if (oldValue && newValue) {
+      // テキストが変更された場合
+      if (oldValue.text !== newValue.text) {
+        console.log('テキストが変更されました:', {
+          old: oldValue.text,
+          new: newValue.text,
+        })
+      }
+
+      // 著者IDが変更された場合
+      if (oldValue.authorId !== newValue.authorId) {
+        console.log('著者IDが変更されました:', {
+          old: oldValue.authorId,
+          new: newValue.authorId,
+        })
+        // 著者IDが変更された場合、著者一覧を再読み込み（必要に応じて）
+        if (newValue.authorId && !oldValue.authorId) {
+          loadAuthors()
+        }
+      }
+
+      // タグが変更された場合
+      const oldTags = (oldValue.tags || []).join(',')
+      const newTags = (newValue.tags || []).join(',')
+      if (oldTags !== newTags) {
+        console.log('タグが変更されました:', {
+          old: oldValue.tags,
+          new: newValue.tags,
+        })
+      }
+    }
+  },
+  { deep: true } // オブジェクトの深い監視
+)
 
 // data-form-mode属性とdata-form-action属性を使った例：コンポーネントマウント時に属性を読み取る
 onMounted(async () => {
