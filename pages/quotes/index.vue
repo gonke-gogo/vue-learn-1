@@ -69,6 +69,7 @@
 
 <script setup lang="ts">
 import { useQuotes } from '@/composables/useQuotes'
+import { useAuthors } from '@/composables/useAuthors'
 import { useQuotesStore } from '@/stores/quotes'
 import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
@@ -78,6 +79,7 @@ const route = useRoute()
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 const { quotes, isLoading, error, addQuote, updateQuote, removeQuote, getAuthorName } = useQuotes()
+const { getOrCreateAuthorByName } = useAuthors()
 const store = useQuotesStore()
 
 // サーバーサイドで取得したデータをストアに反映
@@ -147,7 +149,7 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
     }
     resetForm()
   } catch (err) {
-    console.error('Failed to save quote:', err)
+    // エラーは既にstoreで処理されている
   }
 }
 
@@ -156,20 +158,76 @@ async function handleDelete(id: string) {
     try {
       await removeQuote(id)
     } catch (err) {
-      console.error('Failed to delete quote:', err)
+      // エラーは既にstoreで処理されている
     }
   }
 }
 
 onMounted(async () => {
   // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
+
+  // 既存データでauthorはあるがauthorIdがnullのものを修正
+  const quotesToMigrate = quotes.value.filter((quote) => quote.author && !quote.authorId)
+  if (quotesToMigrate.length > 0) {
+    for (const quote of quotesToMigrate) {
+      if (!quote.author) continue
+      try {
+        // 著者を取得または作成
+        const author = await getOrCreateAuthorByName(quote.author)
+        // 名言にauthorIdを設定（サーバー側で自動的にauthorフィールドも更新される）
+        await updateQuote(quote.id, {
+          authorId: author.id,
+        })
+      } catch (err) {
+        // エラーは無視して続行
+      }
+    }
+    // データを再取得
+    const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
+    if (refreshedQuotes.value) {
+      store.quotes = refreshedQuotes.value
+    }
+  }
+
+  // 既存データでauthorIdはあるがauthorがnullのものを修正
+  const quotesToFixAuthor = quotes.value.filter((quote) => quote.authorId && !quote.author)
+  if (quotesToFixAuthor.length > 0) {
+    for (const quote of quotesToFixAuthor) {
+      if (!quote.authorId) continue
+      try {
+        // authorIdを再設定することで、サーバー側で自動的にauthorフィールドも更新される
+        await updateQuote(quote.id, {
+          authorId: quote.authorId,
+        })
+      } catch (err) {
+        // エラーは無視して続行
+      }
+    }
+    // データを再取得
+    const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
+    if (refreshedQuotes.value) {
+      store.quotes = refreshedQuotes.value
+    }
+  }
+
   if (quotes.value.length === 0) {
     // 初期データを投入（クライアントサイドでのみ）
     for (const seed of seedQuotes) {
       try {
-        await addQuote(seed)
+        // author文字列からauthorIdを取得または作成
+        let authorId: string | undefined = undefined
+        if (seed.author) {
+          const author = await getOrCreateAuthorByName(seed.author)
+          authorId = author.id
+        }
+
+        // authorIdを含めて名言を追加
+        await addQuote({
+          ...seed,
+          authorId,
+        })
       } catch (err) {
-        console.error('Failed to seed quote:', err)
+        // エラーは無視して続行
       }
     }
     // データを再取得

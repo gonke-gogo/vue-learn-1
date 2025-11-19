@@ -1,12 +1,12 @@
-import type { Quote } from '@/types/quote'
-import type { QuoteRepository } from './QuoteRepository'
+import type { Author } from '@/types/author'
+import type { AuthorRepository } from './AuthorRepository'
 import { RepositoryError } from './QuoteRepository'
 
 /**
- * REST APIを使用したQuoteRepositoryの実装
+ * REST APIを使用したAuthorRepositoryの実装
  * Nuxt 3の$fetchを使用してHTTP通信を行う
  */
-export class ApiQuoteRepository implements QuoteRepository {
+export class ApiAuthorRepository implements AuthorRepository {
   private baseUrl: string
 
   constructor(baseUrl?: string) {
@@ -21,10 +21,10 @@ export class ApiQuoteRepository implements QuoteRepository {
     try {
       const url = `${this.baseUrl}${endpoint}`
       const response = await $fetch<T>(url, {
-        method: options?.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | 'TRACE' | 'CONNECT' | undefined || 'GET',
+        method: options?.method || 'GET',
         body: options?.body,
       })
-      return response as T
+      return response
     } catch (error: any) {
       // エラーレスポンスを適切に処理
       const message =
@@ -33,15 +33,15 @@ export class ApiQuoteRepository implements QuoteRepository {
     }
   }
 
-  async list(): Promise<Quote[]> {
-    return this.request<Quote[]>('/quotes', {
+  async list(): Promise<Author[]> {
+    return this.request<Author[]>('/authors', {
       method: 'GET',
     })
   }
 
-  async get(id: string): Promise<Quote | null> {
+  async get(id: string): Promise<Author | null> {
     try {
-      return await this.request<Quote>(`/quotes/${id}`, {
+      return await this.request<Author>(`/authors/${id}`, {
         method: 'GET',
       })
     } catch (error: any) {
@@ -53,25 +53,32 @@ export class ApiQuoteRepository implements QuoteRepository {
     }
   }
 
-  async add(quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>): Promise<Quote> {
-    return this.request<Quote>('/quotes', {
+  async getByName(name: string): Promise<Author | null> {
+    // まず全件取得してから名前で検索
+    // 注: 本番環境では、サーバー側で名前検索のエンドポイントを実装することを推奨
+    const authors = await this.list()
+    return authors.find((a) => a.name === name) || null
+  }
+
+  async add(author: Omit<Author, 'id' | 'createdAt' | 'updatedAt'>): Promise<Author> {
+    return this.request<Author>('/authors', {
       method: 'POST',
-      body: quote,
+      body: author,
     })
   }
 
   async update(
     id: string,
-    updates: Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>
-  ): Promise<Quote> {
-    return this.request<Quote>(`/quotes/${id}`, {
+    updates: Partial<Omit<Author, 'id' | 'createdAt' | 'updatedAt'>>
+  ): Promise<Author> {
+    return this.request<Author>(`/authors/${id}`, {
       method: 'PUT',
       body: updates,
     })
   }
 
   async remove(id: string): Promise<void> {
-    await this.request<void>(`/quotes/${id}`, {
+    await this.request<void>(`/authors/${id}`, {
       method: 'DELETE',
     })
   }

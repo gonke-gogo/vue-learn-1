@@ -164,18 +164,11 @@ watch(
     if (oldValue && newValue) {
       // テキストが変更された場合
       if (oldValue.text !== newValue.text) {
-        console.log('テキストが変更されました:', {
-          old: oldValue.text,
-          new: newValue.text,
-        })
+        // テキスト変更時の処理（必要に応じて追加）
       }
 
       // 著者IDが変更された場合
       if (oldValue.authorId !== newValue.authorId) {
-        console.log('著者IDが変更されました:', {
-          old: oldValue.authorId,
-          new: newValue.authorId,
-        })
         // 著者IDが変更された場合、著者一覧を再読み込み（必要に応じて）
         if (newValue.authorId && !oldValue.authorId) {
           loadAuthors()
@@ -186,10 +179,7 @@ watch(
       const oldTags = (oldValue.tags || []).join(',')
       const newTags = (newValue.tags || []).join(',')
       if (oldTags !== newTags) {
-        console.log('タグが変更されました:', {
-          old: oldValue.tags,
-          new: newValue.tags,
-        })
+        // タグ変更時の処理（必要に応じて追加）
       }
     }
   },
@@ -203,8 +193,6 @@ onMounted(async () => {
   const formCardElement = document.querySelector('.formCard') as HTMLElement
   if (formCardElement) {
     const formMode = formCardElement.getAttribute('data-form-mode')
-    console.log(`フォームモード: ${formMode}`) // デバッグ用
-
     // 属性に基づいて処理を分岐することも可能
     // if (formMode === 'edit') {
     //   // 編集モード特有の処理
@@ -217,8 +205,6 @@ onMounted(async () => {
   const formElement = document.querySelector('form') as HTMLFormElement
   if (formElement) {
     const formAction = formElement.getAttribute('data-form-action')
-    console.log(`フォームアクション: ${formAction}`) // デバッグ用: 'update' または 'create'
-
     // 属性に基づいて処理を分岐することも可能
     // if (formAction === 'update') {
     //   // 更新処理特有の設定

@@ -16,7 +16,6 @@ export const useAuthorsStore = defineStore('authors', () => {
       authors.value = await repository.list()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load authors'
-      console.error('Failed to load authors:', err)
     } finally {
       isLoading.value = false
     }
@@ -31,7 +30,6 @@ export const useAuthorsStore = defineStore('authors', () => {
       return newAuthor
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to add author'
-      console.error('Failed to add author:', err)
       throw err
     } finally {
       isLoading.value = false
@@ -53,7 +51,6 @@ export const useAuthorsStore = defineStore('authors', () => {
       return updated
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update author'
-      console.error('Failed to update author:', err)
       throw err
     } finally {
       isLoading.value = false
@@ -68,7 +65,6 @@ export const useAuthorsStore = defineStore('authors', () => {
       authors.value = authors.value.filter((a) => a.id !== id)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to remove author'
-      console.error('Failed to remove author:', err)
       throw err
     } finally {
       isLoading.value = false

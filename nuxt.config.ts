@@ -10,6 +10,12 @@ export default defineNuxtConfig({
     typeCheck: false
   },
   css: ['~/assets/styles/base.css'],
+  runtimeConfig: {
+    public: {
+      useApi: process.env.NUXT_PUBLIC_USE_API === 'true',
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || '/api',
+    },
+  },
   vite: {
     plugins: [tsconfigPaths()],
     css: {
@@ -17,6 +23,17 @@ export default defineNuxtConfig({
         localsConvention: 'camelCase'
       }
     }
+  },
+  nitro: {
+    experimental: {
+      wasm: true
+    },
+    externals: {
+      inline: []
+    }
+  },
+  build: {
+    transpile: []
   }
 })
 

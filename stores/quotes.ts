@@ -16,7 +16,6 @@ export const useQuotesStore = defineStore('quotes', () => {
       quotes.value = await repository.list()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load quotes'
-      console.error('Failed to load quotes:', err)
     } finally {
       isLoading.value = false
     }
@@ -31,7 +30,6 @@ export const useQuotesStore = defineStore('quotes', () => {
       return newQuote
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to add quote'
-      console.error('Failed to add quote:', err)
       throw err
     } finally {
       isLoading.value = false
@@ -50,7 +48,6 @@ export const useQuotesStore = defineStore('quotes', () => {
       return updated
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update quote'
-      console.error('Failed to update quote:', err)
       throw err
     } finally {
       isLoading.value = false
@@ -65,7 +62,6 @@ export const useQuotesStore = defineStore('quotes', () => {
       quotes.value = quotes.value.filter((q) => q.id !== id)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to remove quote'
-      console.error('Failed to remove quote:', err)
       throw err
     } finally {
       isLoading.value = false
