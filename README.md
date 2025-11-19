@@ -1,3 +1,7 @@
+# 方法1: 自動的にNode.jsのバージョンを切り替える（推奨）
+npm run dev:auto
+
+# 方法2: 手動でNode.jsのバージョンを切り替える
 nvm use        # Node.js 20.19.0に切り替え
 npm run dev    # 開発サーバーを起動
 
@@ -62,6 +66,43 @@ npm run dev
 **実装済み**: Nuxt 3のServer API Routes（`server/api/quotes/`）が実装されています。同じプロジェクト内でREST APIを試すことができます。
 
 **注意**: 現在の実装では、データはメモリ上に保存されます。サーバーを再起動するとデータは消えます（学習用の簡易実装）。
+
+### Supabaseを使用する場合（推奨）
+
+データの永続化とDBアクセスを実装するために、Supabaseを使用することができます。
+
+1. **Supabaseアカウントの作成とプロジェクト作成**
+   - [Supabase](https://supabase.com/)にアクセス
+   - アカウントを作成（GitHubアカウントでログイン可能）
+   - 「New Project」をクリックしてプロジェクトを作成
+
+2. **環境変数の設定**
+   - Supabaseダッシュボードで、プロジェクトの「Settings」→「API」を開く
+   - **Project URL**と**anon public**キーをコピー
+   - プロジェクトのルートディレクトリに`.env`ファイルを作成：
+
+```bash
+# .env
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+3. **データベーステーブルの作成**
+   - Supabaseダッシュボードで「SQL Editor」を開く
+   - `supabase-schema.sql`ファイルの内容をコピーして実行
+
+4. **開発サーバーを再起動**
+
+```bash
+npm run dev
+```
+
+詳細な手順は`SUPABASE_SETUP.md`を参照してください。
+
+**メリット:**
+- ✅ データの永続化（サーバー再起動してもデータが残る）
+- ✅ DBアクセスの実装（評価項目を満たす）
+- ✅ 本番環境でも使用可能
 
 ### ビルド
 

@@ -106,7 +106,7 @@ async function migrateAuthorsFromQuotes() {
         authorId: author.id,
       })
     } catch (err) {
-      console.error(`Failed to migrate quote ${quote.id}:`, err)
+      // エラーは無視して続行
     }
   }
 }

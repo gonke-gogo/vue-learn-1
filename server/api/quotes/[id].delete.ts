@@ -1,4 +1,4 @@
-import { getQuotes, saveQuotes } from '@/server/utils/quotes-storage'
+import { createSupabaseClient } from '@/server/utils/supabase.server'
 
 /**
  * DELETE /api/quotes/:id
@@ -13,16 +13,33 @@ export default defineEventHandler(async (event): Promise<void> => {
     })
   }
   
-  const quotes = getQuotes()
-  const filtered = quotes.filter((q) => q.id !== id)
+  const supabase = await createSupabaseClient()
   
-  if (filtered.length === quotes.length) {
+  // 削除前に存在確認を行う
+  const { data: existingQuote } = await supabase
+    .from('quotes')
+    .select('id')
+    .eq('id', id)
+    .single()
+  
+  if (!existingQuote) {
     throw createError({
       statusCode: 404,
       message: 'Quote not found',
     })
   }
   
-  saveQuotes(filtered)
+  // Supabaseからデータを削除
+  const { error } = await supabase
+    .from('quotes')
+    .delete()
+    .eq('id', id)
+  
+  if (error) {
+    throw createError({
+      statusCode: 500,
+      message: `Failed to delete quote: ${error.message}`,
+    })
+  }
 })
 

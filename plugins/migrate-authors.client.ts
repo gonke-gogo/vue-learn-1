@@ -32,7 +32,7 @@ export default defineNuxtPlugin(async () => {
         // authorフィールドは後方互換性のため残す
       })
     } catch (error) {
-      console.error(`Failed to migrate quote ${quote.id}:`, error)
+      // エラーは無視して続行
     }
   }
 })

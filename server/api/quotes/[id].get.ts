@@ -1,5 +1,5 @@
 import type { Quote } from '@/types/quote'
-import { getQuotes } from '@/server/utils/quotes-storage'
+import { createSupabaseClient } from '@/server/utils/supabase.server'
 
 /**
  * GET /api/quotes/:id
@@ -14,16 +14,45 @@ export default defineEventHandler(async (event): Promise<Quote | null> => {
     })
   }
   
-  const quotes = getQuotes()
-  const quote = quotes.find((q) => q.id === id)
+  const supabase = await createSupabaseClient()
   
-  if (!quote) {
+  // Supabaseからデータを取得
+  const { data, error } = await supabase
+    .from('quotes')
+    .select('*')
+    .eq('id', id)
+    .single()
+  
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // データが見つからない場合
+      throw createError({
+        statusCode: 404,
+        message: 'Quote not found',
+      })
+    }
+    throw createError({
+      statusCode: 500,
+      message: `Failed to fetch quote: ${error.message}`,
+    })
+  }
+  
+  if (!data) {
     throw createError({
       statusCode: 404,
       message: 'Quote not found',
     })
   }
   
-  return quote
+  // Supabaseの形式をアプリの形式に変換
+  return {
+    id: data.id,
+    text: data.text,
+    author: data.author || undefined,
+    authorId: data.author_id || undefined,
+    tags: data.tags || [],
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  }
 })
 

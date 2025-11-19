@@ -113,7 +113,7 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
     }
     isEditing.value = false
   } catch (err) {
-    console.error('Failed to update quote:', err)
+    // エラーは既にstoreで処理されている
   } finally {
     isSaving.value = false
   }
@@ -126,21 +126,13 @@ async function handleDelete() {
       await removeQuote(quote.value.id)
       router.push('/quotes')
     } catch (err) {
-      console.error('Failed to delete quote:', err)
+      // エラーは既にstoreで処理されている
     }
   }
 }
 
 onMounted(() => {
   // サーバーサイドで既にデータを取得済みのため、loadQuotesは不要
-  // データ読み込み後もquoteが見つからない場合のデバッグ
-  if (!quote.value) {
-    console.warn('Quote not found:', quoteId.value)
-    console.log(
-      'Available quotes:',
-      quotes.value.map((q) => q.id)
-    )
-  }
 })
 </script>
 
