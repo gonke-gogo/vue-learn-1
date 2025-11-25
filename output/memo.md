@@ -737,6 +737,140 @@
   - `:to="`/quotes/${quote.id}`"` → テンプレートリテラル（変数を埋め込む）である
   - `:to="{ path: '/quotes', query: { page: 1 } }"` → オブジェクト形式（クエリパラメータ付き）である
 
+- catch all routeを実装する事ができる
+
+  **Catch All Routeとは:**
+  - Catch all routeとは、定義されていないすべてのパスにマッチするルーティングである
+  - 例：`/unknown-page`、`/test/123/abc`など、存在しないパスにアクセスした時に表示されるページである
+  - 404エラーページとして使用されることが多い
+
+  **なぜCatch All Routeが必要か:**
+  - 存在しないページにアクセスした時に、適切なエラーページを表示するため
+  - ユーザーに分かりやすいエラーメッセージを提供するため
+  - SEO対策として、正しいHTTPステータスコード（404）を返すため
+
+  **実装内容:**
+  - `pages/[...slug].vue` → すべての未定義パスにマッチするcatch all route
+  - ファイル名の`[...slug]`の`...`（3つのドット）が「残りのすべてのパスセグメント」を意味する
+  - より具体的なルートが優先されるため、定義されていないパスのみがこのルートにマッチする
+
+  **ファイル名の意味:**
+  ```
+  ファイル名              →  マッチするURL例
+  ──────────────────────────────────────────
+  pages/[id].vue         →  /abc, /123（1つのセグメントのみ）
+  pages/[...slug].vue    →  /abc, /abc/def, /abc/def/ghi
+                            （0個以上の任意のセグメント）
+  ```
+
+  **ルーティングの優先順位:**
+  ```
+  優先順位（高い順）:
+  1. 固定ルート          pages/quotes/index.vue  → /quotes
+  2. 動的ルート          pages/quotes/[id].vue   → /quotes/123
+  3. Catch All Route     pages/[...slug].vue     → その他すべて
+  ```
+
+  **技術的なポイント:**
+  - `[...slug]`の`...`（3つのドット）は「残りのすべてのパスセグメントにマッチする」という意味
+  - `route.params.slug`でパラメータを取得できる（配列として取得される）
+  - より具体的なルートが優先されるため、定義されていないパスのみがマッチする
+
+  **実装例:**
+  ```vue
+  <!-- pages/[...slug].vue -->
+  <template>
+    <div class="page">
+      <div class="errorContainer">
+        <h1 class="errorTitle">404</h1>
+        <h2 class="errorSubtitle">ページが見つかりません</h2>
+        <p class="errorMessage">
+          お探しのページは存在しないか、移動または削除された可能性があります。
+        </p>
+        <div v-if="attemptedPath && attemptedPath !== '/'" class="attemptedPath">
+          <p class="pathLabel">アクセスしようとしたパス:</p>
+          <code class="pathValue">{{ attemptedPath }}</code>
+        </div>
+        <div class="actions">
+          <NuxtLink to="/" class="button">ホームに戻る</NuxtLink>
+          <NuxtLink to="/quotes" class="button buttonSecondary">名言一覧</NuxtLink>
+          <NuxtLink to="/authors" class="button buttonSecondary">著者一覧</NuxtLink>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script setup lang="ts">
+  const route = useRoute()
+
+  // catch all routeのパラメータを取得
+  // slugは配列として取得される（例: ['path', 'to', 'page']）
+  const slug = route.params.slug
+  const attemptedPath = computed(() => {
+    if (Array.isArray(slug)) {
+      return '/' + slug.join('/')
+    }
+    return slug ? `/${slug}` : '/'
+  })
+  </script>
+  ```
+
+  **`route.params.slug`の動作:**
+  - Catch all route `[...slug]`では、URLのパスセグメントが`/`で区切られて配列として取得される
+  - `useRoute()`でルート情報を取得し、`route.params.slug`でパラメータを取得する
+
+  | アクセスしたURL | `route.params.slug`の値 | 型 |
+  |----------------|----------------------|-----|
+  | `/unknown` | `['unknown']` | `string[]` |
+  | `/test/123` | `['test', '123']` | `string[]` |
+  | `/a/b/c/d` | `['a', 'b', 'c', 'd']` | `string[]` |
+
+  **`attemptedPath`の実装:**
+  - `attemptedPath`は、ユーザーがアクセスしようとしたパスを表示するためのcomputedプロパティである
+  - `slug`が配列の場合は`join('/')`で結合し、先頭に`/`を付けてパス文字列を生成する
+  - テンプレートで`{{ attemptedPath }}`として表示することで、ユーザーにどのパスにアクセスしようとしたかを示せる
+
+  **Catch All Routeの実装に必要なもの:**
+  - **必須**: `pages/[...slug].vue`ファイルの存在（これだけでcatch all routeとして機能する）
+  - **任意**: `attemptedPath`の実装（UX向上のため）
+  - **任意**: HTTPステータスコード404の設定（SEO対策のため）
+
+  **HTTPステータスコード404の設定:**
+  - Nuxt 3では、`useRequestEvent()`と`setResponseStatus()`を使用してHTTPステータスコードを設定する
+  - サーバーサイドでのみ実行されるため、`process.server`で条件分岐する
+
+  ```typescript
+  // 404ステータスコードを設定（SEO対策）
+  // サーバーサイドでのみ実行される
+  if (process.server) {
+    const event = useRequestEvent()
+    if (event) {
+      setResponseStatus(event, 404)
+    }
+  }
+  ```
+
+  **検証ツールで404を確認する方法:**
+  - ブラウザの開発者ツール（F12）を開く
+  - Networkタブを開く
+  - 直接URLを入力してアクセスする（例: `http://localhost:3000/unknown-page`）
+  - または、ページをリロード（F5）
+  - Networkタブで該当リクエストを確認し、Status列に`404`が表示される
+
+  **重要なポイント:**
+  - **クライアントサイドナビゲーション**: `<NuxtLink>`で遷移した場合、サーバーへのHTTPリクエストが発生しないため、HTTPステータスコードは表示されない
+  - **サーバーサイドレンダリング**: 直接URL入力/リロードの場合、サーバーへのHTTPリクエストが発生するため、404が表示される
+  - **Catch All Routeの実装は、`pages/[...slug].vue`ファイルだけで完結する**（追加の設定ファイルは不要）
+
+  **実装ファイル:**
+  - `pages/[...slug].vue`: Catch all routeの実装（404エラーページ）
+
+  **初心者向けの理解:**
+  - `[...slug]`は「残りのすべてのパス」にマッチする特別な記法である
+  - より具体的なルートが優先されるため、未定義パスだけがここにマッチする
+  - `route.params.slug`でアクセスされたパスを取得できる（配列として取得される）
+  - `attemptedPath`は必須ではないが、UX向上のために実装することが推奨される
+
   **useRoute()とuseRouter()の違い:**
   
   | 関数 | 用途 | 主な機能 |
@@ -2978,3 +3112,464 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 - Vue3のライフサイクルフック
   - Vue2との違いは？
   - 各ライフサイクルフックで入れるべき処理で代表的なもの
+
+---
+
+## CRUD操作の流れ（ファイルベース）
+
+本プロジェクトにおけるCRUD操作の流れを、各操作ごとにファイルベースで整理します。
+
+### Quotes（名言）のCRUD操作
+
+#### CREATE（作成）
+
+**操作の流れ:**
+
+```
+1. ユーザー操作
+   pages/quotes/index.vue（または他のページ）
+   ↓ フォームに入力して「保存」ボタンをクリック
+   
+2. ページコンポーネント
+   pages/quotes/index.vue
+   - handleSubmit() 関数が実行される
+   - addQuote(formValue) を呼び出す
+   
+3. Composable
+   composables/useQuotes.ts
+   - useQuotes() が addQuote を返す
+   - store.addQuote(quote) を呼び出す
+   
+4. Store（Pinia）
+   stores/quotes.ts
+   - useQuotesStore.addQuote(quote)
+   - repository.add(quote) を呼び出す
+   - 成功後、quotes.value.push(newQuote) でストアを更新
+   
+5. Repository Factory
+   repositories/factory.ts
+   - createQuoteRepository() が実行される
+   - 環境変数に応じて ApiQuoteRepository または LocalQuoteRepository を返す
+   
+6. Repository（API使用時）
+   repositories/ApiQuoteRepository.ts
+   - ApiQuoteRepository.add(quote)
+   - $fetch('/api/quotes', { method: 'POST', body: quote }) を実行
+   
+7. サーバーAPIルート
+   server/api/quotes/index.post.ts
+   - defineEventHandler がリクエストを受け取る
+   - readBody<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>(event) でリクエストボディを取得
+   - createSupabaseClient() でSupabaseクライアントを作成
+   - authorIdが指定されている場合、authorsテーブルから著者名を取得
+   - generateId() でIDを生成
+   - Supabaseの形式（created_at, updated_at, author_id）に変換
+   - supabase.from('quotes').insert([supabaseQuote]).select().single() でデータを挿入
+   - アプリの形式（createdAt, updatedAt, authorId）に変換して返す
+   
+8. Supabase
+   - PostgreSQLデータベースにデータを保存
+   - 保存されたデータを返す
+   
+9. レスポンスの流れ
+   Supabase → server/api/quotes/index.post.ts → repositories/ApiQuoteRepository.ts → stores/quotes.ts → composables/useQuotes.ts → pages/quotes/index.vue
+```
+
+**関連ファイル:**
+
+- `pages/quotes/index.vue` - ユーザーインターフェース、フォーム表示
+- `components/QuoteForm.vue` - フォームコンポーネント
+- `composables/useQuotes.ts` - Composable関数
+- `stores/quotes.ts` - Piniaストア
+- `repositories/factory.ts` - Repositoryファクトリー
+- `repositories/ApiQuoteRepository.ts` - API用Repository実装
+- `repositories/QuoteRepository.ts` - Repositoryインターフェース
+- `server/api/quotes/index.post.ts` - POST APIエンドポイント
+- `server/utils/supabase.server.ts` - Supabaseクライアント作成
+- `utils/id.ts` - ID生成ユーティリティ
+
+#### READ（読み取り）
+
+**操作の流れ（一覧取得）:**
+
+```
+1. ページアクセス
+   pages/quotes/index.vue（または他のページ）
+   ↓ ページが読み込まれる
+   
+2. サーバーサイド（SSR）
+   pages/quotes/index.vue
+   - useFetch<Quote[]>('/api/quotes') が実行される（サーバーサイド）
+   - Nuxt 3が自動的に server/api/quotes/index.get.ts を呼び出す
+   
+3. サーバーAPIルート
+   server/api/quotes/index.get.ts
+   - defineEventHandler が実行される
+   - createSupabaseClient() でSupabaseクライアントを作成
+   - supabase.from('quotes').select('*').order('created_at', { ascending: false }) でデータを取得
+   - Supabaseの形式（created_at, updated_at, author_id）をアプリの形式（createdAt, updatedAt, authorId）に変換
+   - データを返す
+   
+4. Supabase
+   - PostgreSQLデータベースからデータを取得
+   - データを返す
+   
+5. クライアントサイド（CSR）
+   pages/quotes/index.vue
+   - useFetch<Quote[]>('/api/quotes') が実行される（クライアントサイド）
+   - HTTPリクエストで /api/quotes エンドポイントを呼び出す
+   - サーバーAPIルートが実行される（上記と同じ）
+   - 取得したデータを store.quotes に反映
+   
+6. Store（Pinia）
+   stores/quotes.ts
+   - quotes.value が更新される
+   - 画面に自動的に反映される（リアクティビティ）
+```
+
+**操作の流れ（個別取得）:**
+
+```
+1. ページアクセス
+   pages/quotes/[id].vue
+   ↓ 動的ルートでページが読み込まれる
+   
+2. ページコンポーネント
+   pages/quotes/[id].vue
+   - useRoute() で route.params.id を取得
+   - useQuotes() で getQuote(id) を呼び出す
+   
+3. Composable
+   composables/useQuotes.ts
+   - store.getQuote(id) を呼び出す
+   
+4. Store（Pinia）
+   stores/quotes.ts
+   - useQuotesStore.getQuote(id)
+   - quotes.value.find((q) => q.id === id) でストアから取得
+   - または、repository.get(id) を呼び出す（ストアにない場合）
+   
+5. Repository（API使用時）
+   repositories/ApiQuoteRepository.ts
+   - ApiQuoteRepository.get(id)
+   - $fetch(`/api/quotes/${id}`, { method: 'GET' }) を実行
+   
+6. サーバーAPIルート
+   server/api/quotes/[id].get.ts
+   - defineEventHandler がリクエストを受け取る
+   - getRouterParam(event, 'id') でIDを取得
+   - createSupabaseClient() でSupabaseクライアントを作成
+   - supabase.from('quotes').select('*').eq('id', id).single() でデータを取得
+   - エラーハンドリング（404など）
+   - Supabaseの形式をアプリの形式に変換して返す
+   
+7. Supabase
+   - PostgreSQLデータベースから指定IDのデータを取得
+   - データを返す
+```
+
+**関連ファイル:**
+
+- `pages/quotes/index.vue` - 一覧ページ
+- `pages/quotes/[id].vue` - 詳細ページ
+- `composables/useQuotes.ts` - Composable関数
+- `stores/quotes.ts` - Piniaストア
+- `repositories/ApiQuoteRepository.ts` - API用Repository実装
+- `server/api/quotes/index.get.ts` - GET /api/quotes エンドポイント（一覧取得）
+- `server/api/quotes/[id].get.ts` - GET /api/quotes/:id エンドポイント（個別取得）
+- `server/utils/supabase.server.ts` - Supabaseクライアント作成
+
+#### UPDATE（更新）
+
+**操作の流れ:**
+
+```
+1. ユーザー操作
+   pages/quotes/index.vue（または他のページ）
+   ↓ 「編集」ボタンをクリック
+   
+2. ページコンポーネント
+   pages/quotes/index.vue
+   - startEdit(quote) 関数が実行される
+   - editingQuote.value = quote で編集対象を設定
+   - form に quote の値を設定
+   
+3. ユーザー操作
+   ↓ フォームを編集して「保存」ボタンをクリック
+   
+4. ページコンポーネント
+   pages/quotes/index.vue
+   - handleSubmit() 関数が実行される
+   - updateQuote(editingQuote.value.id, formValue) を呼び出す
+   
+5. Composable
+   composables/useQuotes.ts
+   - store.updateQuote(id, updates) を呼び出す
+   
+6. Store（Pinia）
+   stores/quotes.ts
+   - useQuotesStore.updateQuote(id, updates)
+   - repository.update(id, updates) を呼び出す
+   - 成功後、quotes.value[index] = updated でストアを更新
+   
+7. Repository（API使用時）
+   repositories/ApiQuoteRepository.ts
+   - ApiQuoteRepository.update(id, updates)
+   - $fetch(`/api/quotes/${id}`, { method: 'PUT', body: updates }) を実行
+   
+8. サーバーAPIルート
+   server/api/quotes/[id].put.ts
+   - defineEventHandler がリクエストを受け取る
+   - getRouterParam(event, 'id') でIDを取得
+   - readBody<Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>>(event) でリクエストボディを取得
+   - createSupabaseClient() でSupabaseクライアントを作成
+   - authorIdが指定されている場合、authorsテーブルから著者名を取得
+   - アプリの形式（authorId）をSupabaseの形式（author_id）に変換
+   - updated_at を現在時刻に更新
+   - supabase.from('quotes').update(updateData).eq('id', id).select().single() でデータを更新
+   - エラーハンドリング（404など）
+   - Supabaseの形式をアプリの形式に変換して返す
+   
+9. Supabase
+   - PostgreSQLデータベースのデータを更新
+   - 更新されたデータを返す
+```
+
+**関連ファイル:**
+
+- `pages/quotes/index.vue` - 編集UI
+- `components/QuoteForm.vue` - フォームコンポーネント
+- `composables/useQuotes.ts` - Composable関数
+- `stores/quotes.ts` - Piniaストア
+- `repositories/ApiQuoteRepository.ts` - API用Repository実装
+- `server/api/quotes/[id].put.ts` - PUT /api/quotes/:id エンドポイント
+- `server/utils/supabase.server.ts` - Supabaseクライアント作成
+
+#### DELETE（削除）
+
+**操作の流れ:**
+
+```
+1. ユーザー操作
+   pages/quotes/index.vue（または他のページ）
+   ↓ 「削除」ボタンをクリック
+   
+2. ページコンポーネント
+   pages/quotes/index.vue
+   - handleDelete(quote.id) 関数が実行される
+   - 確認ダイアログを表示（必要に応じて）
+   - removeQuote(quote.id) を呼び出す
+   
+3. Composable
+   composables/useQuotes.ts
+   - store.removeQuote(id) を呼び出す
+   
+4. Store（Pinia）
+   stores/quotes.ts
+   - useQuotesStore.removeQuote(id)
+   - repository.remove(id) を呼び出す
+   - 成功後、quotes.value = quotes.value.filter((q) => q.id !== id) でストアを更新
+   
+5. Repository（API使用時）
+   repositories/ApiQuoteRepository.ts
+   - ApiQuoteRepository.remove(id)
+   - $fetch(`/api/quotes/${id}`, { method: 'DELETE' }) を実行
+   
+6. サーバーAPIルート
+   server/api/quotes/[id].delete.ts
+   - defineEventHandler がリクエストを受け取る
+   - getRouterParam(event, 'id') でIDを取得
+   - createSupabaseClient() でSupabaseクライアントを作成
+   - 削除前に存在確認を行う（supabase.from('quotes').select('id').eq('id', id).single()）
+   - エラーハンドリング（404など）
+   - supabase.from('quotes').delete().eq('id', id) でデータを削除
+   
+7. Supabase
+   - PostgreSQLデータベースからデータを削除
+   - 削除が完了する
+```
+
+**関連ファイル:**
+
+- `pages/quotes/index.vue` - 削除UI
+- `composables/useQuotes.ts` - Composable関数
+- `stores/quotes.ts` - Piniaストア
+- `repositories/ApiQuoteRepository.ts` - API用Repository実装
+- `server/api/quotes/[id].delete.ts` - DELETE /api/quotes/:id エンドポイント
+- `server/utils/supabase.server.ts` - Supabaseクライアント作成
+
+### Authors（著者）のCRUD操作
+
+#### CREATE（作成）
+
+**操作の流れ:**
+
+```
+1. ユーザー操作
+   pages/authors/index.vue（または他のページ）
+   ↓ フォームに入力して「保存」ボタンをクリック
+   
+2. ページコンポーネント
+   pages/authors/index.vue
+   - handleSubmit() 関数が実行される
+   - addAuthor(formValue) を呼び出す
+   
+3. Composable
+   composables/useAuthors.ts
+   - useAuthors() が addAuthor を返す
+   - store.addAuthor(author) を呼び出す
+   
+4. Store（Pinia）
+   stores/authors.ts
+   - useAuthorsStore.addAuthor(author)
+   - repository.add(author) を呼び出す
+   - 成功後、authors.value.push(newAuthor) でストアを更新
+   
+5. Repository Factory
+   repositories/factory.ts
+   - createAuthorRepository() が実行される
+   - 環境変数に応じて ApiAuthorRepository または LocalAuthorRepository を返す
+   
+6. Repository（API使用時）
+   repositories/ApiAuthorRepository.ts
+   - ApiAuthorRepository.add(author)
+   - $fetch('/api/authors', { method: 'POST', body: author }) を実行
+   
+7. サーバーAPIルート
+   server/api/authors/index.post.ts
+   - defineEventHandler がリクエストを受け取る
+   - readBody<Omit<Author, 'id' | 'createdAt' | 'updatedAt'>>(event) でリクエストボディを取得
+   - createSupabaseClient() でSupabaseクライアントを作成
+   - generateId() でIDを生成
+   - Supabaseの形式（created_at, updated_at）に変換
+   - supabase.from('authors').insert([supabaseAuthor]).select().single() でデータを挿入
+   - アプリの形式（createdAt, updatedAt）に変換して返す
+   
+8. Supabase
+   - PostgreSQLデータベースにデータを保存
+   - 保存されたデータを返す
+```
+
+**関連ファイル:**
+
+- `pages/authors/index.vue` - ユーザーインターフェース
+- `composables/useAuthors.ts` - Composable関数
+- `stores/authors.ts` - Piniaストア
+- `repositories/factory.ts` - Repositoryファクトリー
+- `repositories/ApiAuthorRepository.ts` - API用Repository実装
+- `repositories/AuthorRepository.ts` - Repositoryインターフェース
+- `server/api/authors/index.post.ts` - POST /api/authors エンドポイント
+- `server/utils/supabase.server.ts` - Supabaseクライアント作成
+- `utils/id.ts` - ID生成ユーティリティ
+
+#### READ（読み取り）
+
+**操作の流れ（一覧取得）:**
+
+```
+1. ページアクセス
+   pages/authors/index.vue（または他のページ）
+   ↓ ページが読み込まれる
+   
+2. サーバーサイド（SSR）
+   pages/authors/index.vue
+   - useFetch<Author[]>('/api/authors') が実行される（サーバーサイド）
+   - Nuxt 3が自動的に server/api/authors/index.get.ts を呼び出す
+   
+3. サーバーAPIルート
+   server/api/authors/index.get.ts
+   - defineEventHandler が実行される
+   - createSupabaseClient() でSupabaseクライアントを作成
+   - supabase.from('authors').select('*').order('created_at', { ascending: false }) でデータを取得
+   - Supabaseの形式（created_at, updated_at）をアプリの形式（createdAt, updatedAt）に変換
+   - データを返す
+   
+4. Supabase
+   - PostgreSQLデータベースからデータを取得
+   - データを返す
+   
+5. クライアントサイド（CSR）
+   pages/authors/index.vue
+   - useFetch<Author[]>('/api/authors') が実行される（クライアントサイド）
+   - HTTPリクエストで /api/authors エンドポイントを呼び出す
+   - サーバーAPIルートが実行される（上記と同じ）
+   - 取得したデータを store.authors に反映
+   
+6. Store（Pinia）
+   stores/authors.ts
+   - authors.value が更新される
+   - 画面に自動的に反映される（リアクティビティ）
+```
+
+**関連ファイル:**
+
+- `pages/authors/index.vue` - 一覧ページ
+- `composables/useAuthors.ts` - Composable関数
+- `stores/authors.ts` - Piniaストア
+- `repositories/ApiAuthorRepository.ts` - API用Repository実装
+- `server/api/authors/index.get.ts` - GET /api/authors エンドポイント
+- `server/utils/supabase.server.ts` - Supabaseクライアント作成
+
+### データの流れのまとめ
+
+**レイヤー構造:**
+
+```
+┌─────────────────────────────────────────┐
+│ 1. Presentation Layer（プレゼンテーション層）│
+│    - pages/*.vue（ページコンポーネント）    │
+│    - components/*.vue（UIコンポーネント）   │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 2. Composable Layer（Composable層）      │
+│    - composables/useQuotes.ts           │
+│    - composables/useAuthors.ts           │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 3. State Management Layer（状態管理層）  │
+│    - stores/quotes.ts（Piniaストア）     │
+│    - stores/authors.ts（Piniaストア）    │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 4. Repository Factory Layer（ファクトリー層）│
+│    - repositories/factory.ts            │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 5. Repository Layer（Repository層）    │
+│    - repositories/ApiQuoteRepository.ts  │
+│    - repositories/ApiAuthorRepository.ts │
+│    - repositories/LocalQuoteRepository.ts│
+│    - repositories/LocalAuthorRepository.ts│
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 6. API Layer（API層）                   │
+│    - server/api/quotes/*.ts             │
+│    - server/api/authors/*.ts            │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 7. Database Layer（データベース層）      │
+│    - Supabase（PostgreSQL）             │
+└─────────────────────────────────────────┘
+```
+
+**各レイヤーの役割:**
+
+1. **Presentation Layer**: ユーザーインターフェース、フォーム表示、イベントハンドリング
+2. **Composable Layer**: ビジネスロジックの再利用可能な関数、Storeへのアクセス
+3. **State Management Layer**: アプリケーションの状態管理、データの永続化
+4. **Repository Factory Layer**: 環境に応じたRepositoryの生成
+5. **Repository Layer**: データアクセスの抽象化、API呼び出しまたはlocalStorage操作
+6. **API Layer**: サーバーサイドのAPIエンドポイント、データの変換、エラーハンドリング
+7. **Database Layer**: データの永続化、PostgreSQLデータベース
+
+**データ変換のポイント:**
+
+- **アプリの形式 → Supabaseの形式**: `createdAt` → `created_at`, `authorId` → `author_id`
+- **Supabaseの形式 → アプリの形式**: `created_at` → `createdAt`, `author_id` → `authorId`
+- 変換は主に `server/api/*.ts` で行われる

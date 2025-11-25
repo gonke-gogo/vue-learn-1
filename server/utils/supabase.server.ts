@@ -4,7 +4,7 @@
  * 動的インポートを使用してクライアントサイドにバンドルされないようにする
  */
 export async function createSupabaseClient() {
-  // 動的インポートを使用してサーバーサイドでのみ実行されるようにする
+  // supabaseを作成するための関数をインポート
   const { createClient } = await import('@supabase/supabase-js')
   
   const supabaseUrl = process.env.SUPABASE_URL
@@ -16,6 +16,7 @@ export async function createSupabaseClient() {
     )
   }
 
+  // upabaseプロジェクトのデータベースに接続できるクライアントオブジェクトを作成
   return createClient(supabaseUrl, supabaseAnonKey)
 }
 
