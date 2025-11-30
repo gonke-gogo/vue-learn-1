@@ -4,12 +4,12 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 export default defineNuxtConfig({
   compatibilityDate: '2024-01-01',
   devtools: { enabled: true },
-  modules: ['@pinia/nuxt'],
+  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss'],
   typescript: {
     strict: true,
     typeCheck: false
   },
-  css: ['~/assets/styles/base.css'],
+  css: ['~/assets/styles/base.scss'],
   runtimeConfig: {
     public: {
       useApi: process.env.NUXT_PUBLIC_USE_API === 'true',
