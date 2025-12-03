@@ -9,14 +9,19 @@ export class LocalQuoteRepository implements QuoteRepository {
   private getQuotes(): Quote[] {
     try {
       if (typeof window === 'undefined') {
+        console.warn('[LocalQuoteRepository] window is undefined, returning empty array')
         return []
       }
       const stored = localStorage.getItem(STORAGE_KEY)
       if (!stored) {
+        console.debug('[LocalQuoteRepository] No stored quotes found')
         return []
       }
-      return JSON.parse(stored) as Quote[]
+      const quotes = JSON.parse(stored) as Quote[]
+      console.debug(`[LocalQuoteRepository] Loaded ${quotes.length} quotes from storage`)
+      return quotes
     } catch (error) {
+      console.error('[LocalQuoteRepository] Failed to read quotes from storage:', error)
       throw new RepositoryError('Failed to read quotes from storage', error)
     }
   }
@@ -24,10 +29,13 @@ export class LocalQuoteRepository implements QuoteRepository {
   private saveQuotes(quotes: Quote[]): void {
     try {
       if (typeof window === 'undefined') {
+        console.error('[LocalQuoteRepository] localStorage is not available (window is undefined)')
         throw new RepositoryError('localStorage is not available')
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(quotes))
+      console.debug(`[LocalQuoteRepository] Saved ${quotes.length} quotes to storage`)
     } catch (error) {
+      console.error('[LocalQuoteRepository] Failed to save quotes to storage:', error)
       throw new RepositoryError('Failed to save quotes to storage', error)
     }
   }
@@ -82,4 +90,3 @@ export class LocalQuoteRepository implements QuoteRepository {
     this.saveQuotes(filtered)
   }
 }
-

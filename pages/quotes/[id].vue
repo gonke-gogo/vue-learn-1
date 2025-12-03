@@ -36,8 +36,8 @@
         </div>
 
         <div class="actions">
-          <button @click="startEdit" class="button">編集</button>
-          <button @click="handleDelete" class="button buttonDanger">削除</button>
+          <button class="button" @click="startEdit">編集</button>
+          <button class="button buttonDanger" @click="handleDelete">削除</button>
           <NuxtLink
             v-if="quote.authorId"
             :to="`/authors/${quote.authorId}/quotes`"
@@ -61,7 +61,7 @@ const router = useRouter()
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
-const { quotes, getQuote, updateQuote, removeQuote, isLoading, error, getAuthorName } = useQuotes()
+const { getQuote, updateQuote, removeQuote, isLoading, error, getAuthorName } = useQuotes()
 const store = useQuotesStore()
 
 // サーバーサイドで取得したデータをストアに反映
@@ -137,7 +137,7 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-@import '@/assets/styles/base';
+@use '@/assets/styles/variables' as *;
 .page {
   max-width: 800px;
   margin: 0 auto;

@@ -4,7 +4,7 @@
       <h1>名言一覧</h1>
       <div class="headerActions">
         <NuxtLink to="/authors" class="button buttonSecondary">著者一覧</NuxtLink>
-        <button @click="showAddForm = true" class="button">新規追加</button>
+        <button class="button" @click="showAddForm = true">新規追加</button>
       </div>
     </div>
 
@@ -22,7 +22,7 @@
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="quotes.length === 0" class="emptyState">
       <p>名言が登録されていません</p>
-      <button @click="showAddForm = true" class="button">最初の名言を追加</button>
+      <button class="button" @click="showAddForm = true">最初の名言を追加</button>
     </div>
     <div v-else class="quotesList">
       <div v-for="quote in quotes" :key="quote.id">
@@ -56,8 +56,8 @@
           </div>
           <div class="quoteActions">
             <NuxtLink :to="`/quotes/${quote.id}`" class="buttonSmall" @click.stop> 詳細 </NuxtLink>
-            <button @click.stop="startEdit(quote as Quote)" class="buttonSmall">編集</button>
-            <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
+            <button class="buttonSmall" @click.stop="startEdit(quote as Quote)">編集</button>
+            <button class="buttonSmall buttonDanger" @click.stop="handleDelete(quote.id)">
               削除
             </button>
           </div>
@@ -249,7 +249,7 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-@import '@/assets/styles/base';
+@use '@/assets/styles/variables' as *;
 .page {
   max-width: 1200px;
   margin: 0 auto;

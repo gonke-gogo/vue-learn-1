@@ -22,8 +22,8 @@ describe('useSeededRandom', () => {
     const random1 = useSeededRandom('2024-01-01', 1)
     const random2 = useSeededRandom('2024-01-01', 2)
 
-    const result1 = random1.pick(array)
-    const result2 = random2.pick(array)
+    const _result1 = random1.pick(array)
+    const _result2 = random2.pick(array)
 
     // 異なるmoodで異なる結果になる可能性が高い（確率的に）
     // ただし、偶然同じになる可能性もあるため、複数回試行
@@ -77,4 +77,3 @@ describe('useSeededRandom', () => {
     }
   })
 })
-

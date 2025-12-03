@@ -8,7 +8,7 @@
             <NuxtLink to="/">今日の名言</NuxtLink>
             <NuxtLink to="/quotes">名言一覧</NuxtLink>
           </div>
-          <button class="themeToggle" @click="toggleTheme" aria-label="テーマ切替">
+          <button class="themeToggle" aria-label="テーマ切替" @click="toggleTheme">
             {{ isDark ? '☀️' : '🌙' }}
           </button>
         </nav>
@@ -40,7 +40,7 @@ const toggleTheme = useToggle(isDark)
 </script>
 
 <style scoped lang="scss">
-@import '@/assets/styles/base';
+@use '@/assets/styles/variables' as *;
 .layout {
   min-height: 100vh;
   display: flex;
@@ -156,4 +156,3 @@ const toggleTheme = useToggle(isDark)
   }
 }
 </style>
-

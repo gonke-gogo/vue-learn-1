@@ -1,6 +1,5 @@
 import { computed } from 'vue'
 import { useAuthorsStore } from '@/stores/authors'
-import type { Author } from '@/types/author'
 
 export function useAuthors() {
   const store = useAuthorsStore()
@@ -17,4 +16,3 @@ export function useAuthors() {
     getOrCreateAuthorByName: store.getOrCreateAuthorByName,
   }
 }
-

@@ -6,17 +6,18 @@
     <h2 class="formTitle text-xl md:text-2xl font-semibold">
       {{ isEditMode ? '編集' : '新規追加' }}
     </h2>
-    <form @submit.prevent="handleSubmit" :[formActionAttr]="isEditMode ? 'update' : 'create'">
+    <form :[formActionAttr]="isEditMode ? 'update' : 'create'" @submit.prevent="handleSubmit">
+      <!-- Tailwindのレイアウトクラスを使用 -->
       <div class="formGroup mb-6">
         <label for="text" class="formLabel block text-sm font-medium mb-2">名言 *</label>
         <textarea
           id="text"
           :value="modelValue.text"
-          @input="updateText"
           required
           rows="3"
           class="input block w-full rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0"
           placeholder="名言を入力してください"
+          @input="updateText"
         />
       </div>
       <div class="formGroup mb-6">
@@ -24,8 +25,8 @@
         <select
           id="authorId"
           :value="modelValue.authorId || ''"
-          @change="updateAuthorId"
           class="input block w-full rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0"
+          @change="updateAuthorId"
         >
           <option value="">著者を選択（任意）</option>
           <option v-for="author in authors" :key="author.id" :value="author.id">
@@ -40,25 +41,25 @@
         <input
           id="tags"
           :value="tagsInput"
-          @input="updateTagsInput"
           type="text"
           class="input block w-full rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0"
           placeholder="例: 成功, 挑戦, 努力"
+          @input="updateTagsInput"
         />
       </div>
       <!-- TailwindのFlexboxクラスを使用 -->
       <div class="formActions flex flex-col md:flex-row gap-3 md:gap-4">
         <button
           type="submit"
-          class="button inline-flex justify-center items-center px-8 py-3.5 border-transparent text-base font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
+          class="button bg-pink-500 inline-flex justify-center items-center px-8 py-3.5 border-transparent text-base font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
           :disabled="isLoading"
         >
           {{ isEditMode ? '更新' : '追加' }}
         </button>
         <button
           type="button"
-          @click="handleCancel"
           class="button buttonSecondary inline-flex justify-center items-center px-8 py-3.5 text-base font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
+          @click="handleCancel"
         >
           キャンセル
         </button>
@@ -69,7 +70,6 @@
 
 <script setup lang="ts">
 import { watch } from 'vue'
-import type { Quote } from '@/types/quote'
 import { useAuthors } from '@/composables/useAuthors'
 
 // Props定義
@@ -208,11 +208,11 @@ onMounted(async () => {
   // DOM要素を取得してdata-form-mode属性を読み取る
   const formCardElement = document.querySelector('.formCard') as HTMLElement
   if (formCardElement) {
-    const formMode = formCardElement.getAttribute('data-form-mode')
+    const _formMode = formCardElement.getAttribute('data-form-mode')
     // 属性に基づいて処理を分岐することも可能
-    // if (formMode === 'edit') {
+    // if (_formMode === 'edit') {
     //   // 編集モード特有の処理
-    // } else if (formMode === 'create') {
+    // } else if (_formMode === 'create') {
     //   // 新規作成モード特有の処理
     // }
   }
@@ -220,11 +220,11 @@ onMounted(async () => {
   // data-form-action属性を読み取る例
   const formElement = document.querySelector('form') as HTMLFormElement
   if (formElement) {
-    const formAction = formElement.getAttribute('data-form-action')
+    const _formAction = formElement.getAttribute('data-form-action')
     // 属性に基づいて処理を分岐することも可能
-    // if (formAction === 'update') {
+    // if (_formAction === 'update') {
     //   // 更新処理特有の設定
-    // } else if (formAction === 'create') {
+    // } else if (_formAction === 'create') {
     //   // 作成処理特有の設定
     // }
   }
@@ -232,7 +232,7 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-@import '@/assets/styles/base';
+@use '@/assets/styles/variables' as *;
 
 .formCard {
   background-color: var(--color-surface);
@@ -300,7 +300,7 @@ form[data-form-action='create'] {
 }
 
 .button {
-  background-color: var(--color-primary);
+  /* background-colorはTailwindクラス（bg-pink-500）で指定 */
   color: white;
   cursor: pointer;
   border: none;

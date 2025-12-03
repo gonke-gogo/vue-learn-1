@@ -52,7 +52,7 @@ const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 
 const { quotes, isLoading, error } = useQuotes()
-const { authors, getAuthor } = useAuthors()
+const { getAuthor } = useAuthors()
 const quotesStore = useQuotesStore()
 const authorsStore = useAuthorsStore()
 
@@ -82,7 +82,7 @@ function navigateToQuote(id: string) {
 </script>
 
 <style scoped lang="scss">
-@import '@/assets/styles/base';
+@use '@/assets/styles/variables' as *;
 .page {
   max-width: 1200px;
   margin: 0 auto;

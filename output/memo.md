@@ -1,46 +1,46 @@
 - 処理の流れ
-┌─────────────────────────────────────────┐
-│ 1. ブラウザ（UI）                        │
-│    ユーザーがフォームに入力して送信       │
-└──────────────┬──────────────────────────┘
-               ↓
-┌─────────────────────────────────────────┐
-│ 2. pages/quotes.vue                     │
-│    handleSubmit()                       │
-│    → addQuote(formValue)                │
-└──────────────┬──────────────────────────┘
-               ↓
-┌─────────────────────────────────────────┐
-│ 3. composables/useQuotes.ts            │
-│    useQuotes()                          │
-│    → store.addQuote                     │
-└──────────────┬──────────────────────────┘
-               ↓
-┌─────────────────────────────────────────┐
-│ 4. stores/quotes.ts                     │
-│    useQuotesStore.addQuote()            │
-│    → repository.add(quote)               │
-└──────────────┬──────────────────────────┘
-               ↓
-┌─────────────────────────────────────────┐
-│ 5. repositories/factory.ts              │
-│    createQuoteRepository()              │
-│    → new LocalQuoteRepository()         │
-└──────────────┬──────────────────────────┘
-               ↓
-┌─────────────────────────────────────────┐
-│ 6. repositories/LocalQuoteRepository.ts│
-│    add()                                │
-│    → getQuotes()                        │
-│    → 新しい名言オブジェクト作成          │
-│    → saveQuotes(quotes)                 │
-└──────────────┬──────────────────────────┘
-               ↓
-┌─────────────────────────────────────────┐
-│ 7. repositories/LocalQuoteRepository.ts│
-│    saveQuotes()                         │
-│    → localStorage.setItem()              │
-└─────────────────────────────────────────┘
+  ┌─────────────────────────────────────────┐
+  │ 1. ブラウザ（UI） │
+  │ ユーザーがフォームに入力して送信 │
+  └──────────────┬──────────────────────────┘
+  ↓
+  ┌─────────────────────────────────────────┐
+  │ 2. pages/quotes.vue │
+  │ handleSubmit() │
+  │ → addQuote(formValue) │
+  └──────────────┬──────────────────────────┘
+  ↓
+  ┌─────────────────────────────────────────┐
+  │ 3. composables/useQuotes.ts │
+  │ useQuotes() │
+  │ → store.addQuote │
+  └──────────────┬──────────────────────────┘
+  ↓
+  ┌─────────────────────────────────────────┐
+  │ 4. stores/quotes.ts │
+  │ useQuotesStore.addQuote() │
+  │ → repository.add(quote) │
+  └──────────────┬──────────────────────────┘
+  ↓
+  ┌─────────────────────────────────────────┐
+  │ 5. repositories/factory.ts │
+  │ createQuoteRepository() │
+  │ → new LocalQuoteRepository() │
+  └──────────────┬──────────────────────────┘
+  ↓
+  ┌─────────────────────────────────────────┐
+  │ 6. repositories/LocalQuoteRepository.ts│
+  │ add() │
+  │ → getQuotes() │
+  │ → 新しい名言オブジェクト作成 │
+  │ → saveQuotes(quotes) │
+  └──────────────┬──────────────────────────┘
+  ↓
+  ┌─────────────────────────────────────────┐
+  │ 7. repositories/LocalQuoteRepository.ts│
+  │ saveQuotes() │
+  │ → localStorage.setItem() │
+  └─────────────────────────────────────────┘
 
 - Props / Event / Modelを使ってコンポーネントを実装する事ができる
 
@@ -68,26 +68,23 @@
   - タグ入力はカンマ区切りの文字列として扱い、内部で配列に変換してから親に渡す
 
   **`v-model`の仕組み（なぜ`modelValue`に自動的に渡されるのか）:**
-  
+
   `v-model="form"`は、Vue 3の糖衣構文（シンタックスシュガー）だ。以下の2つの省略形である：
-  
+
   ```vue
   <!-- これが -->
   <QuoteForm v-model="form" />
-  
+
   <!-- 実際にはこういう意味 -->
-  <QuoteForm 
-    :modelValue="form" 
-    @update:modelValue="form = $event" 
-  />
+  <QuoteForm :modelValue="form" @update:modelValue="form = $event" />
   ```
-  
+
   **動作フロー:**
   1. `:modelValue="form"` → 親の`form`を子の`modelValue`プロップに渡す（Props）
   2. 子コンポーネントで入力が変更される
   3. `emit('update:modelValue', newValue)` → 子が親に新しい値を通知（Event）
   4. `@update:modelValue="form = $event"` → 親の`form`が更新される
-  
+
   **なぜ`modelValue`という名前なのか:**
   - Vue 3では、`v-model`はデフォルトで`modelValue`プロップと`update:modelValue`イベントを使用する規約である
   - 特別な設定は不要で、子コンポーネントで`modelValue`を定義すれば自動的に`v-model`で受け取れる
@@ -106,10 +103,11 @@
   - 子コンポーネントはビジネスロジックを持たず、純粋にフォームの表示と値の管理のみを担当する（関心の分離）
 
   **`defineEmits`の詳細解説:**
-  
+
   `defineEmits`は、Vue 3のComposition APIでイベントを定義するための関数だ。TypeScriptと組み合わせることで、型安全にイベントを発火できる。
-  
+
   **基本的な使い方:**
+
   ```typescript
   // イベントを定義
   const emit = defineEmits<{
@@ -117,48 +115,49 @@
     submit: [value: { text: string; author?: string; tags?: string[] }]
     cancel: []
   }>()
-  
+
   // イベントを発火
-  emit('submit', formValue)  // ✅ 正しい型で発火
-  emit('cancel')              // ✅ 引数なしで発火
-  emit('submit', 'invalid')  // ❌ 型エラー（文字列は受け付けない）
+  emit('submit', formValue) // ✅ 正しい型で発火
+  emit('cancel') // ✅ 引数なしで発火
+  emit('submit', 'invalid') // ❌ 型エラー（文字列は受け付けない）
   ```
-  
+
   **型定義の意味:**
   - `'update:modelValue': [value: {...}]` → `update:modelValue`イベントは1つの引数（value）を受け取る
   - `submit: [value: {...}]` → `submit`イベントは1つの引数（value）を受け取る
   - `cancel: []` → `cancel`イベントは引数を受け取らない
-  
+
   **型安全性のメリット:**
   1. **コンパイル時チェック**: 間違った型でイベントを発火すると、TypeScriptがエラーを出す
   2. **IDE補完**: イベント名や引数の型が自動補完される
   3. **ドキュメント化**: コードを見るだけで、どのイベントがどの引数を受け取るかが分かる
-  
+
   **実際の使用例:**
+
   ```typescript
   // 子コンポーネント（QuoteForm.vue）で定義
   const emit = defineEmits<{
     submit: [value: { text: string; author?: string; tags?: string[] }]
     cancel: []
   }>()
-  
+
   // イベントを発火
   function handleSubmit() {
-    emit('submit', formValue)  // フォームの値のみを親に渡す
+    emit('submit', formValue) // フォームの値のみを親に渡す
   }
-  
+
   function handleCancel() {
-    emit('cancel')  // 引数なしでキャンセルを通知
+    emit('cancel') // 引数なしでキャンセルを通知
   }
   ```
-  
+
   ```vue
   <!-- 親コンポーネント（quotes.vue）で受け取る -->
   <QuoteForm
     @submit="handleSubmit"    <!-- フォームの値を受け取る -->
     @cancel="cancelForm"       <!-- キャンセルを処理 -->
   />
-  
+
   <script setup>
   // 親側でイベントを処理
   function handleSubmit(formValue: { text: string; author?: string; tags?: string[] }) {
@@ -171,50 +170,50 @@
   }
   </script>
   ```
-  
+
   **Vue 2との違い:**
   - Vue 2では`this.$emit('eventName', value)`を使用（Options API）
   - Vue 3では`defineEmits`で型安全に定義し、`emit('eventName', value)`で発火（Composition API）
   - TypeScriptの型チェックにより、より安全にイベントを扱える
 
   **`defineEmits`は必須なのか？定義していないイベントは発火できないのか？**
-  
+
   **答え: `defineEmits`は必須ではない。定義していなくても`emit`は使える。**
-  
+
   ただし、型安全性とIDE補完のため、`defineEmits`を使うことを強く推奨する。
-  
+
   **実際の動作:**
+
   ```typescript
   // defineEmitsを定義しなくても、emitは使える
   // ただし、型チェックが効かない
-  emit('submit', formValue)  // ✅ 動作する
-  emit('cancel')             // ✅ 動作する
-  emit('undefinedEvent')     // ✅ 動作する（型エラーにならない）
+  emit('submit', formValue) // ✅ 動作する
+  emit('cancel') // ✅ 動作する
+  emit('undefinedEvent') // ✅ 動作する（型エラーにならない）
   ```
-  
-  
+
   ```typescript
   // defineEmitsを定義した場合
   const emit = defineEmits<{
     submit: [value: { text: string }]
     cancel: []
   }>()
-  
-  emit('submit', formValue)  // ✅ 正しい型で発火
-  emit('cancel')             // ✅ 正しい
-  emit('undefinedEvent')     // ❌ 型エラー（定義していないイベント）
+
+  emit('submit', formValue) // ✅ 正しい型で発火
+  emit('cancel') // ✅ 正しい
+  emit('undefinedEvent') // ❌ 型エラー（定義していないイベント）
   ```
-  
+
   **違いのまとめ:**
-  
-  | 項目 | `defineEmits`なし | `defineEmits`あり |
-  |------|------------------|------------------|
-  | emitできるか | ✅ できる | ✅ できる |
-  | 型チェック | ❌ なし | ✅ あり |
-  | IDE補完 | ❌ なし | ✅ あり |
-  | 実行時エラー | 発見しにくい | コンパイル時に発見 |
-  | ドキュメント化 | 不明確 | 明確 |
-  
+
+  | 項目           | `defineEmits`なし | `defineEmits`あり  |
+  | -------------- | ----------------- | ------------------ |
+  | emitできるか   | ✅ できる         | ✅ できる          |
+  | 型チェック     | ❌ なし           | ✅ あり            |
+  | IDE補完        | ❌ なし           | ✅ あり            |
+  | 実行時エラー   | 発見しにくい      | コンパイル時に発見 |
+  | ドキュメント化 | 不明確            | 明確               |
+
   **まとめ:**
   - `defineEmits`は必須ではない（定義していなくても`emit`は使える）
   - 定義していないイベントも発火できるが、型エラーになる（型安全性のため）
@@ -222,19 +221,20 @@
   - `defineEmits`は「ルール」ではなく「ベストプラクティス」である
 
   **「valueのみを親に投げる」のアンチパターン:**
-  
+
   **❌ アンチパターン例:**
   1. 子コンポーネントでビジネスロジックを実行（`addQuote`/`updateQuote`を子で呼ぶ）
   2. value以外の情報も一緒に渡す（`isEdit`、`quoteId`など親が既に知っている情報）
   3. 子コンポーネントでAPI呼び出しを行う
   4. イベント名で登録/更新を区別する（`@create`と`@update`を分ける）
-  
+
   **✅ 正しいパターン:**
   - 子は`emit('submit', formValue)`でvalueのみを親に渡す
   - 親が`@submit`イベントを受け取り、ビジネスロジック（登録/更新の判定、API呼び出し）を実行
   - 関心の分離を保ち、子コンポーネントを再利用可能にする
 
 **実装ファイル:**
+
 - `components/QuoteForm.vue`: 共通フォームコンポーネント
 - `pages/quotes.vue`: 親コンポーネント（登録・編集画面）
 
@@ -265,20 +265,19 @@
   - クリーンアップを忘れると、ページを離れてもタイマーが動き続けてメモリリークが発生する
 
   **役割の分離:**
-  
-  | 処理 | 役割 | 実行タイミング |
-  |------|------|----------------|
-  | `startAutoRotate()` | タイマーを開始して入れ替えを開始 | `onMounted`で1回 |
-  | `setInterval` | 10秒ごとに`pickNext()`を自動実行 | 開始後、自動で繰り返し |
-  | `pickNext()` | 名言を入れ替える | 10秒ごとに自動実行 |
-  | `onBeforeUnmount` | タイマーIDとイベントリスナーをクリーンアップ | ページ遷移時などに1回 |
+
+  | 処理                | 役割                                         | 実行タイミング         |
+  | ------------------- | -------------------------------------------- | ---------------------- |
+  | `startAutoRotate()` | タイマーを開始して入れ替えを開始             | `onMounted`で1回       |
+  | `setInterval`       | 10秒ごとに`pickNext()`を自動実行             | 開始後、自動で繰り返し |
+  | `pickNext()`        | 名言を入れ替える                             | 10秒ごとに自動実行     |
+  | `onBeforeUnmount`   | タイマーIDとイベントリスナーをクリーンアップ | ページ遷移時などに1回  |
 
   **なぜonBeforeUnmountでクリーンアップするのが最適か:**
   - タイミング: アンマウント直前に走るため、破棄処理中の不要なコールバック発火を抑止できる
   - 参照の有効性: DOMやハンドラ参照が生きているタイミングで`clearInterval`や`removeEventListener`を安全に呼べる
   - 副作用の抑止: タイマーやグローバルリスナーが残存して二重発火・メモリリークを起こすのを防げる
   - 補足: `onUnmounted`でも後始末は可能だが、DOMが外れた後であり、直前の副作用抑止という観点では`onBeforeUnmount`が望ましい
-
 
 - コンポーネント内のロジックをcomposableに切り出して定義する事ができる
 
@@ -322,15 +321,19 @@
 
   ```typescript
   // stores/quotes.ts
-  export const useQuotesStore = defineStore('quotes', () => {
-    const quotes = ref<Quote[]>([])
-    // ...
-    return { quotes }
-  }, {
-    persist: {
-      pick: ['quotes'],  // quotesのみを永続化
+  export const useQuotesStore = defineStore(
+    'quotes',
+    () => {
+      const quotes = ref<Quote[]>([])
+      // ...
+      return { quotes }
     },
-  })
+    {
+      persist: {
+        pick: ['quotes'], // quotesのみを永続化
+      },
+    }
+  )
   ```
 
   **メリット:**
@@ -355,49 +358,48 @@
         return []
       }
     }
-    
+
     const quotes = ref<Quote[]>(loadFromStorage())
-    
+
     // quotesが変更されるたびにlocalStorageに保存
-    watch(quotes, (newQuotes) => {
-      try {
-        localStorage.setItem('quotes', JSON.stringify(newQuotes))
-      } catch (error) {
-        console.error('Failed to save to storage:', error)
-      }
-    }, { deep: true })
-    
+    watch(
+      quotes,
+      (newQuotes) => {
+        try {
+          localStorage.setItem('quotes', JSON.stringify(newQuotes))
+        } catch (error) {
+          console.error('Failed to save to storage:', error)
+        }
+      },
+      { deep: true }
+    )
+
     return { quotes }
   })
   ```
 
   **デメリット:**
-  
   1. **コードが複雑: 手動で保存・復元を実装する必要がある**
      - 初期化時にlocalStorageから読み込む関数（`loadFromStorage()`）を実装する必要がある
      - 状態が変更されるたびに保存するために`watch`で深い監視（`{ deep: true }`）が必要
      - SSR（サーバーサイドレンダリング）対応のために`typeof window === 'undefined'`のチェックが必要
      - ライブラリを使えば設定だけで済むが、直接アクセスではすべて自分で実装する必要がある
-  
   2. **エラーハンドリングが必要: 各所でtry-catchが必要**
      - `loadFromStorage()`で`JSON.parse()`が失敗する可能性があるため、try-catchが必要
      - `watch`内の`localStorage.setItem()`も容量制限などで失敗する可能性があるため、try-catchが必要
      - エラーハンドリングのロジックが各所に分散し、一貫性を保ちにくい
      - ライブラリを使えば、エラーハンドリングはライブラリが自動的に処理してくれる
-  
   3. **保守性が低い: 変更時に複数箇所を修正する必要がある**
      - ストレージキー名を変更する場合、`loadFromStorage()`と`watch`内の両方を修正する必要がある
      - 永続化するプロパティを追加・削除する場合、`watch`の条件を変更する必要がある
      - エラーハンドリングの方法を変更する場合、各所のtry-catchを修正する必要がある
      - ライブラリを使えば、設定を変更するだけで済む
-  
   4. **バグのリスク: 手動実装で見落としが起きやすい**
      - `watch`に`{ deep: true }`を付け忘れると、配列の中身が変わっても保存されない
      - SSR対応を忘れると、サーバー側でエラーが発生する
      - 初期化のタイミングを間違えると、他のコンポーネントが空の状態を参照してしまう
      - クリーンアップを忘れると、メモリリークが発生する可能性がある
      - ライブラリを使えば、これらの問題はライブラリが解決してくれる
-  
   5. **機能が限定的: 選択的永続化などは自前実装が必要**
      - `quotes`だけを永続化し、`isLoading`や`error`は永続化しない場合、条件分岐が必要
      - 複数のストアで異なる永続化設定を使う場合、それぞれに実装が必要
@@ -411,69 +413,79 @@
 
 ## シンプルなルーティングを設定できる
 
-  **ルーティングとは:**
-  - ルーティングとは、URL（アドレスバーのパス）と表示するページを対応付ける仕組みである
-  - 例：`/quotes`というURLにアクセスすると、名言一覧ページが表示される
-  - これにより、ユーザーはURLを直接入力したり、ブックマークしたりできる
+**ルーティングとは:**
 
-  **Nuxt.jsのファイルベースルーティング:**
-  - Nuxt.jsでは、**ファイル構造がそのままルーティングになる**という特徴がある
-  - `pages/`ディレクトリ内のファイル構造が自動的にURLパスに変換される
-  - 特別な設定ファイルは不要である（自動的にルーティングが生成される）
-  - これにより、直感的で分かりやすいルーティングが実現できる
+- ルーティングとは、URL（アドレスバーのパス）と表示するページを対応付ける仕組みである
+- 例：`/quotes`というURLにアクセスすると、名言一覧ページが表示される
+- これにより、ユーザーはURLを直接入力したり、ブックマークしたりできる
 
-  **基本的なルーティングの仕組み:**
-  ```
-  ファイル構造                    →  URL
-  ──────────────────────────────────────────
-  pages/index.vue                →  /
-  pages/quotes.vue               →  /quotes
-  pages/authors/index.vue        →  /authors
-  ```
+**Nuxt.jsのファイルベースルーティング:**
 
-  **実装内容:**
-  - `pages/index.vue` → `/`（トップページ）
-  - `pages/quotes.vue` → `/quotes`（名言一覧ページ）
-  - `pages/authors/index.vue` → `/authors`（著者一覧ページ）
+- Nuxt.jsでは、**ファイル構造がそのままルーティングになる**という特徴がある
+- `pages/`ディレクトリ内のファイル構造が自動的にURLパスに変換される
+- 特別な設定ファイルは不要である（自動的にルーティングが生成される）
+- これにより、直感的で分かりやすいルーティングが実現できる
 
-  **`index.vue`の特別な役割:**
-  - `index.vue`は**特別なファイル名**で、URLには表示されない
-  - `pages/index.vue` → `/`（`index`という文字列はURLに含まれない）
-  - `pages/authors/index.vue` → `/authors`（`index`という文字列はURLに含まれない）
-  - 一方、`quotes.vue` → `/quotes`（ファイル名がそのままURLになる）
+**基本的なルーティングの仕組み:**
 
-  **なぜ`index.vue`が特別なのか:**
-  - `index`は「そのディレクトリのデフォルトページ」を表す慣習的な名前である
-  - Webサーバーでも`index.html`がデフォルトページとして扱われるのと同じ考え方だ
-  - これにより、ディレクトリ名だけでアクセスできる（`/authors`で`/authors/index`にアクセスできる）
+```
+ファイル構造                    →  URL
+──────────────────────────────────────────
+pages/index.vue                →  /
+pages/quotes.vue               →  /quotes
+pages/authors/index.vue        →  /authors
+```
 
-  **ファイル名とURLの対応関係:**
-  ```
-  ファイル名              →  URL
-  ──────────────────────────────────────────
-  index.vue              →  /（親ディレクトリのルート）
-  quotes.vue             →  /quotes（ファイル名がそのままURL）
-  authors/index.vue      →  /authors（親ディレクトリのルート）
-  authors/profile.vue    →  /authors/profile（ファイル名がそのままURL）
-  ```
+**実装内容:**
 
-  **技術的なポイント:**
-  - Nuxt 3では`pages/`配下の`.vue`ファイルが自動的にルートとして認識される
-  - `index.vue`は親ディレクトリのルートになる（`pages/authors/index.vue` → `/authors`）
-  - `index.vue`以外のファイル名は、そのままURLパスになる
-  - `NuxtLink`コンポーネントでページ間のナビゲーションを実装する
+- `pages/index.vue` → `/`（トップページ）
+- `pages/quotes.vue` → `/quotes`（名言一覧ページ）
+- `pages/authors/index.vue` → `/authors`（著者一覧ページ）
 
-  **基本的な使い方:**
-  ```vue
-  <!-- NuxtLinkでページ遷移 -->
-  <NuxtLink to="/quotes">名言一覧</NuxtLink>
-  <NuxtLink to="/authors">著者一覧</NuxtLink>
-  ```
+**`index.vue`の特別な役割:**
 
-  **NuxtLinkとは:**
-  - HTMLの`<a>`タグの代わりに使用するNuxt.jsのコンポーネントである
-  - ページ遷移が高速だ（SPAのため、ページ全体を再読み込みしない）
-  - `to`属性で遷移先のURLを指定する
+- `index.vue`は**特別なファイル名**で、URLには表示されない
+- `pages/index.vue` → `/`（`index`という文字列はURLに含まれない）
+- `pages/authors/index.vue` → `/authors`（`index`という文字列はURLに含まれない）
+- 一方、`quotes.vue` → `/quotes`（ファイル名がそのままURLになる）
+
+**なぜ`index.vue`が特別なのか:**
+
+- `index`は「そのディレクトリのデフォルトページ」を表す慣習的な名前である
+- Webサーバーでも`index.html`がデフォルトページとして扱われるのと同じ考え方だ
+- これにより、ディレクトリ名だけでアクセスできる（`/authors`で`/authors/index`にアクセスできる）
+
+**ファイル名とURLの対応関係:**
+
+```
+ファイル名              →  URL
+──────────────────────────────────────────
+index.vue              →  /（親ディレクトリのルート）
+quotes.vue             →  /quotes（ファイル名がそのままURL）
+authors/index.vue      →  /authors（親ディレクトリのルート）
+authors/profile.vue    →  /authors/profile（ファイル名がそのままURL）
+```
+
+**技術的なポイント:**
+
+- Nuxt 3では`pages/`配下の`.vue`ファイルが自動的にルートとして認識される
+- `index.vue`は親ディレクトリのルートになる（`pages/authors/index.vue` → `/authors`）
+- `index.vue`以外のファイル名は、そのままURLパスになる
+- `NuxtLink`コンポーネントでページ間のナビゲーションを実装する
+
+**基本的な使い方:**
+
+```vue
+<!-- NuxtLinkでページ遷移 -->
+<NuxtLink to="/quotes">名言一覧</NuxtLink>
+<NuxtLink to="/authors">著者一覧</NuxtLink>
+```
+
+**NuxtLinkとは:**
+
+- HTMLの`<a>`タグの代わりに使用するNuxt.jsのコンポーネントである
+- ページ遷移が高速だ（SPAのため、ページ全体を再読み込みしない）
+- `to`属性で遷移先のURLを指定する
 
 - 動的ルートマッチが定義できる
 
@@ -494,6 +506,7 @@
   - 例：`/quotes/abc123`にアクセスすると、`route.params.id`は`"abc123"`になる
 
   **ファイル構造とURLの対応:**
+
   ```
   ファイル構造                    →  URL例
   ──────────────────────────────────────────
@@ -509,6 +522,7 @@
   - `useRouter()`でプログラムからページ遷移（`router.push()`など）ができる
 
   **実際の使用例:**
+
   ```vue
   <!-- pages/quotes/[id].vue -->
   <template>
@@ -522,11 +536,11 @@
   <script setup>
   const route = useRoute()
   const router = useRouter()
-  
+
   // 動的パラメータを取得
   // /quotes/abc123 にアクセスした場合、quoteId は "abc123" になる
   const quoteId = computed(() => route.params.id as string)
-  
+
   // プログラムから遷移（ボタンクリックなどで使用）
   function goBack() {
     router.push('/quotes')  // 名言一覧ページに戻る
@@ -577,28 +591,29 @@
     - `/authors/:id/quotes` → その著者の名言一覧（ネストされたルート）である
 
   **実際の使用例:**
+
   ```vue
   <!-- pages/authors/[id]/quotes.vue -->
   <script setup>
   const route = useRoute()
   const { quotes, loadQuotes } = useQuotes()
   const { getAuthor, loadAuthors } = useAuthors()
-  
+
   // 動的パラメータから著者IDを取得
   // /authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes にアクセスした場合
   const authorId = computed(() => route.params.id as string)
-  
+
   // 著者情報を取得
   const author = computed(() => getAuthor(authorId.value))
   const authorName = computed(() => author.value?.name || '不明な著者')
-  
+
   // 著者IDでフィルタリング
   const authorQuotes = computed(() => {
     return quotes.value.filter(
       (quote) => quote.authorId === authorId.value
     )
   })
-  
+
   onMounted(async () => {
     await Promise.all([loadQuotes(), loadAuthors()])
   })
@@ -606,6 +621,7 @@
   ```
 
   **ネストされたルーティングの構造:**
+
   ```
   pages/
     └── authors/
@@ -626,6 +642,7 @@
   - 著者名が変更されてもURLが変わらない（安定性）
 
   **CRUD画面のルーティング設計例:**
+
   ```
   pages/
     └── quotes/
@@ -636,6 +653,7 @@
   ```
 
   **has_many関係のネストルーティング設計例:**
+
   ```
   pages/
     └── authors/
@@ -643,7 +661,7 @@
         └── [id]/
             └── quotes.vue     → /authors/:id/quotes（その著者の名言一覧）
   ```
-  
+
   **パラメータ名の命名規則:**
   - 動的パラメータの名前は、実際の値の意味を表すべき
   - 例：`[id]`はID（数値やUUID）を表す場合に使用
@@ -651,53 +669,55 @@
   - このプロジェクトでは、著者IDをパラメータとして使用するため`[id]`を使用
 
   **URL設計の選択肢: ID vs 名前（スラッグ）**
-  
+
   一般的なRESTful APIの設計では、以下の2つのパターンがある：
-  
+
   **1. IDを使う場合（このプロジェクトで採用）**
+
   ```
   /authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes  → UUID
   ```
-  
+
   **メリット:**
   - 名前が変更されてもURLが変わらない（安定性）
   - 特殊文字のエンコーディングが不要
   - データベースの主キーと直接対応できる
   - 一般的なRESTful設計パターン
   - 同名の著者がいても問題ない
-  
+
   **デメリット:**
   - 人間が読めない（IDだけでは何を表すか分からない）
   - SEOには不利（検索エンジンが内容を理解しにくい）
-  
+
   **2. 名前（スラッグ）を使う場合**
+
   ```
   /authors/mark-twain/quotes     → 英語のスラッグ
   /authors/マーク・トウェイン/quotes → 日本語の名前
   ```
-  
+
   **メリット:**
   - SEOに有利（URLから内容が分かる）
   - 人間が読める、共有しやすい
   - URLが直感的
-  
+
   **デメリット:**
   - 名前が変更されるとURLが変わる（ブックマークが無効になる）
   - 日本語などの特殊文字はエンコーディングが必要（`encodeURIComponent()`）
   - 同名の著者がいる場合の処理が必要
-  
+
   **3. このプロジェクトでの選択**
-  
+
   このプロジェクトでは、**IDベースの設計を採用**している：
   - `/authors/{著者ID}/quotes`
   - 例：`/authors/01ARZ3NDEKTSV4RRFFQ69G5FAV/quotes`
-  
+
   **選択理由:**
   - 著者名が変更されてもURLが変わらない（安定性）
   - 特殊文字のエンコーディングが不要
   - データベースの主キーと直接対応できる
   - 一般的なRESTful設計パターンに準拠
-  
+
   **実装の流れ:**
   1. `Author`型を追加し、著者にIDを付与
   2. `Quote`型に`authorId`フィールドを追加
@@ -716,15 +736,16 @@
   - `pages/authors/[id]/quotes.vue`: 特定著者の名言一覧（ネストされたルーティング、著者IDを使用）
 
   **NuxtLinkでの使用例:**
+
   ```vue
   <!-- 動的ルートへのリンク -->
   <NuxtLink :to="`/quotes/${quote.id}`">詳細</NuxtLink>
-  
+
   <!-- ネストされたルートへのリンク（IDベース） -->
   <NuxtLink :to="`/authors/${author.id}/quotes`">
     この著者の名言一覧
   </NuxtLink>
-  
+
   <!-- クエリパラメータ付きのリンク -->
   <NuxtLink :to="{ path: '/quotes', query: { page: 1 } }">
     名言一覧（1ページ目）
@@ -755,6 +776,7 @@
   - より具体的なルートが優先されるため、定義されていないパスのみがこのルートにマッチする
 
   **ファイル名の意味:**
+
   ```
   ファイル名              →  マッチするURL例
   ──────────────────────────────────────────
@@ -764,6 +786,7 @@
   ```
 
   **ルーティングの優先順位:**
+
   ```
   優先順位（高い順）:
   1. 固定ルート          pages/quotes/index.vue  → /quotes
@@ -777,6 +800,7 @@
   - より具体的なルートが優先されるため、定義されていないパスのみがマッチする
 
   **実装例:**
+
   ```vue
   <!-- pages/[...slug].vue -->
   <template>
@@ -819,11 +843,11 @@
   - Catch all route `[...slug]`では、URLのパスセグメントが`/`で区切られて配列として取得される
   - `useRoute()`でルート情報を取得し、`route.params.slug`でパラメータを取得する
 
-  | アクセスしたURL | `route.params.slug`の値 | 型 |
-  |----------------|----------------------|-----|
-  | `/unknown` | `['unknown']` | `string[]` |
-  | `/test/123` | `['test', '123']` | `string[]` |
-  | `/a/b/c/d` | `['a', 'b', 'c', 'd']` | `string[]` |
+  | アクセスしたURL | `route.params.slug`の値 | 型         |
+  | --------------- | ----------------------- | ---------- |
+  | `/unknown`      | `['unknown']`           | `string[]` |
+  | `/test/123`     | `['test', '123']`       | `string[]` |
+  | `/a/b/c/d`      | `['a', 'b', 'c', 'd']`  | `string[]` |
 
   **`attemptedPath`の実装:**
   - `attemptedPath`は、ユーザーがアクセスしようとしたパスを表示するためのcomputedプロパティである
@@ -872,50 +896,52 @@
   - `attemptedPath`は必須ではないが、UX向上のために実装することが推奨される
 
   **useRoute()とuseRouter()の違い:**
-  
-  | 関数 | 用途 | 主な機能 |
-  |------|------|----------|
-  | `useRoute()` | 現在のルート情報を取得 | `route.params`、`route.query`、`route.path`など |
+
+  | 関数          | 用途                     | 主な機能                                               |
+  | ------------- | ------------------------ | ------------------------------------------------------ |
+  | `useRoute()`  | 現在のルート情報を取得   | `route.params`、`route.query`、`route.path`など        |
   | `useRouter()` | プログラムからページ遷移 | `router.push()`、`router.replace()`、`router.go()`など |
-  
+
   **useRoute()の主なプロパティ:**
+
   ```typescript
   const route = useRoute()
-  
+
   // 動的パラメータ（URLの一部として含まれる値）
   // 例：/quotes/abc123 → route.params.id は "abc123"
-  route.params      // { id: 'abc123' }
-  
+  route.params // { id: 'abc123' }
+
   // クエリパラメータ（URLの?以降の値）
   // 例：/quotes?page=1&sort=desc → route.query は { page: '1', sort: 'desc' }
-  route.query       // { page: '1', sort: 'desc' }
-  
+  route.query // { page: '1', sort: 'desc' }
+
   // 現在のパス（URLのパス部分）
-  route.path        // '/quotes/abc123'
-  
+  route.path // '/quotes/abc123'
+
   // ルート名（ファイルベースルーティングでは自動生成）
-  route.name        // 'quotes-id'
-  
+  route.name // 'quotes-id'
+
   // ルートのメタ情報（カスタムデータ）
-  route.meta        // {}
+  route.meta // {}
   ```
-  
+
   **useRouter()の主なメソッド:**
+
   ```typescript
   const router = useRouter()
-  
+
   // ページ遷移（履歴に残る）
   router.push('/quotes')
-  
+
   // クエリパラメータ付きで遷移
   router.push({ path: '/quotes', query: { page: 1 } })
-  
+
   // 履歴を残さずに遷移（戻るボタンで戻れない）
   router.replace('/quotes')
-  
+
   // ブラウザの戻る（-1で1つ戻る）
   router.go(-1)
-  
+
   // ブラウザの進む（1で1つ進む）
   router.go(1)
   ```
@@ -929,20 +955,21 @@
   - `router.replace()`は現在のページを置き換える（履歴に残らない）
 
   **実際の使用例:**
+
   ```vue
   <script setup>
   const route = useRoute()
   const router = useRouter()
-  
+
   // URLからIDを取得
   // /quotes/abc123 にアクセスした場合
   const quoteId = route.params.id  // "abc123"
-  
+
   // ボタンクリックでページ遷移
   function goToQuotes() {
     router.push('/quotes')
   }
-  
+
   // 検索結果ページに遷移（クエリパラメータ付き）
   function searchQuotes(keyword: string) {
     router.push({
@@ -953,7 +980,6 @@
   }
   </script>
   ```
-
 
 - `ref`と`computed`の違いと使い分け
 
@@ -973,10 +999,11 @@
   - 他の値の変更を監視して自分を更新する機能がある
 
   **基本的な使い方:**
+
   ```typescript
   // ref: 手動で値を変更
   const count = ref(0)
-  count.value = 1  // 手動で値を変更
+  count.value = 1 // 手動で値を変更
 
   // computed: 他の値から自動計算
   const doubleCount = computed(() => count.value * 2)
@@ -990,7 +1017,7 @@
   ```typescript
   // <script>内
   const authorId = computed(() => route.params.id as string)
-  console.log(authorId.value)  // ✅ .value が必要
+  console.log(authorId.value) // ✅ .value が必要
 
   // <template>内
   // {{ authorId }}  ← .value 不要（自動展開）
@@ -998,36 +1025,39 @@
 
   **`ref`と`computed`の違い:**
 
-  | 特徴 | `ref` | `computed` |
-  |------|-------|------------|
-  | 用途 | 手動で値を変更する | 他の値から自動計算する |
-  | 更新方法 | 手動で`.value`を設定 | 依存する値が変わると自動更新 |
-  | `watch` | 必要（他の値の変更を監視する場合） | 不要 |
-  | コードの複雑さ | 複雑（`watch`が必要） | シンプル |
-  | 自分自身の値が変わった時の画面更新 | ✅ 自動 | ✅ 自動 |
-  | 他の値の変更を監視して自分を更新 | ❌ なし（`watch`が必要） | ✅ 自動 |
+  | 特徴                               | `ref`                              | `computed`                   |
+  | ---------------------------------- | ---------------------------------- | ---------------------------- |
+  | 用途                               | 手動で値を変更する                 | 他の値から自動計算する       |
+  | 更新方法                           | 手動で`.value`を設定               | 依存する値が変わると自動更新 |
+  | `watch`                            | 必要（他の値の変更を監視する場合） | 不要                         |
+  | コードの複雑さ                     | 複雑（`watch`が必要）              | シンプル                     |
+  | 自分自身の値が変わった時の画面更新 | ✅ 自動                            | ✅ 自動                      |
+  | 他の値の変更を監視して自分を更新   | ❌ なし（`watch`が必要）           | ✅ 自動                      |
 
   **`ref`を使うべき場合:**
+
   ```typescript
   // ✅ ref が適切な例
-  const mood = ref(3)  // ユーザーが手動で変更する値
-  const showAddForm = ref(false)  // 手動で表示/非表示を切り替える
-  const editingQuote = ref<Quote | null>(null)  // 手動で編集対象を設定
+  const mood = ref(3) // ユーザーが手動で変更する値
+  const showAddForm = ref(false) // 手動で表示/非表示を切り替える
+  const editingQuote = ref<Quote | null>(null) // 手動で編集対象を設定
   ```
 
   **`computed`を使うべき場合:**
+
   ```typescript
   // ✅ computed が適切な例
-  const authorId = computed(() => route.params.id as string)  // route.params.id から計算
-  const author = computed(() => getAuthor(authorId.value))  // authorId から計算
+  const authorId = computed(() => route.params.id as string) // route.params.id から計算
+  const author = computed(() => getAuthor(authorId.value)) // authorId から計算
   const authorQuotes = computed(() => {
     return quotes.value.filter((quote) => quote.authorId === authorId.value)
-  })  // quotes と authorId から計算
+  }) // quotes と authorId から計算
   ```
 
   **具体例で理解する:**
 
   **例1: `ref`を使う場合（手動更新が必要）**
+
   ```typescript
   // ❌ ref を使う場合
   const authorId = ref(route.params.id as string)
@@ -1035,11 +1065,14 @@
   const authorQuotes = ref<Quote[]>([])
 
   // route.params.id が変わった時に手動で更新する必要がある
-  watch(() => route.params.id, (newId) => {
-    authorId.value = newId as string
-    author.value = getAuthor(authorId.value)
-    authorQuotes.value = quotes.value.filter((quote) => quote.authorId === authorId.value)
-  })
+  watch(
+    () => route.params.id,
+    (newId) => {
+      authorId.value = newId as string
+      author.value = getAuthor(authorId.value)
+      authorQuotes.value = quotes.value.filter((quote) => quote.authorId === authorId.value)
+    }
+  )
 
   // quotes が変わった時も手動で更新する必要がある
   watch(quotes, () => {
@@ -1048,6 +1081,7 @@
   ```
 
   **例2: `computed`を使う場合（自動更新）**
+
   ```typescript
   // ✅ computed を使う場合
   const authorId = computed(() => route.params.id as string)
@@ -1064,21 +1098,23 @@
   3. **コードの簡潔さ**: `watch`が不要で、コードがシンプルになる
 
   **`computed`が参照している値が変わると自動的に再計算される:**
+
   ```typescript
   const authorId = computed(() => route.params.id as string)
-  
+
   // route.params.id が変わると...
   // → authorId.value が自動で再計算される
   // → authorId を使っている画面も自動で更新される
   ```
 
   **ネストした`computed`の例:**
+
   ```typescript
   // 50-52行目の例
   const authorId = computed(() => route.params.id as string)
   const author = computed(() => getAuthor(authorId.value))
   const authorName = computed(() => author.value?.name || '不明な著者')
-  
+
   // route.params.id が変わると → authorId が更新
   // authorId が変わると → author が更新
   // author が変わると → authorName が更新
@@ -1101,19 +1137,19 @@
 
   **各APIの概要:**
 
-  | API | 用途 | 特徴 |
-  |-----|------|------|
-  | `ref` | プリミティブ値やオブジェクトをリアクティブにする | `.value`でアクセス、オブジェクト全体を置き換え可能 |
-  | `reactive` | オブジェクトをリアクティブにする | 直接プロパティにアクセス、オブジェクト全体の置き換え不可 |
-  | `computed` | 他の値から自動計算される値 | 依存する値が変わると自動で再計算 |
-  | `watch` | 値の変更を監視して処理を実行 | `oldValue`と`newValue`を比較できる |
+  | API        | 用途                                             | 特徴                                                     |
+  | ---------- | ------------------------------------------------ | -------------------------------------------------------- |
+  | `ref`      | プリミティブ値やオブジェクトをリアクティブにする | `.value`でアクセス、オブジェクト全体を置き換え可能       |
+  | `reactive` | オブジェクトをリアクティブにする                 | 直接プロパティにアクセス、オブジェクト全体の置き換え不可 |
+  | `computed` | 他の値から自動計算される値                       | 依存する値が変わると自動で再計算                         |
+  | `watch`    | 値の変更を監視して処理を実行                     | `oldValue`と`newValue`を比較できる                       |
 
   **1. `ref`の使用例（本プロジェクト）:**
 
   ```typescript
   // pages/quotes/index.vue
-  const showAddForm = ref(false)  // フォームの表示/非表示を管理
-  const editingQuote = ref<Quote | null>(null)  // 編集中の名言を管理
+  const showAddForm = ref(false) // フォームの表示/非表示を管理
+  const editingQuote = ref<Quote | null>(null) // 編集中の名言を管理
 
   // 値の変更
   showAddForm.value = true
@@ -1148,13 +1184,13 @@
 
   **`ref`と`reactive`の使い分け:**
 
-  | ケース | 推奨 | 理由 |
-  |--------|------|------|
-  | プリミティブ値 | `ref` | `reactive`は使えない |
-  | 小さなオブジェクト（2-3個のプロパティ） | `ref` | どちらでも良いが、`ref`の方が一般的 |
-  | 大きなオブジェクト（10個以上のプロパティ） | `reactive` | `.value`が多くて煩雑になる |
-  | 頻繁に個別のプロパティを更新 | `reactive` | `.value`が不要でシンプル |
-  | オブジェクト全体を置き換えることが多い | `ref` | `reactive`では置き換えができない |
+  | ケース                                     | 推奨       | 理由                                |
+  | ------------------------------------------ | ---------- | ----------------------------------- |
+  | プリミティブ値                             | `ref`      | `reactive`は使えない                |
+  | 小さなオブジェクト（2-3個のプロパティ）    | `ref`      | どちらでも良いが、`ref`の方が一般的 |
+  | 大きなオブジェクト（10個以上のプロパティ） | `reactive` | `.value`が多くて煩雑になる          |
+  | 頻繁に個別のプロパティを更新               | `reactive` | `.value`が不要でシンプル            |
+  | オブジェクト全体を置き換えることが多い     | `ref`      | `reactive`では置き換えができない    |
 
   **3. `computed`の使用例（本プロジェクト）:**
 
@@ -1186,15 +1222,17 @@
     })
 
     // 2. デコレート処理：著者オブジェクトに名言数を追加
-    return authors.value
-      .map((author) => ({
-        ...author,  // 元のプロパティを保持
-        quoteCount: quoteCountMap.get(author.id) || 0,  // 新しいプロパティを追加（デコレート）
-      }))
-      // 3. 計算処理：フィルタリング
-      .filter((author) => author.quoteCount > 0)
-      // 4. 計算処理：ソート
-      .sort((a, b) => b.quoteCount - a.quoteCount)
+    return (
+      authors.value
+        .map((author) => ({
+          ...author, // 元のプロパティを保持
+          quoteCount: quoteCountMap.get(author.id) || 0, // 新しいプロパティを追加（デコレート）
+        }))
+        // 3. 計算処理：フィルタリング
+        .filter((author) => author.quoteCount > 0)
+        // 4. 計算処理：ソート
+        .sort((a, b) => b.quoteCount - a.quoteCount)
+    )
   })
   ```
 
@@ -1217,9 +1255,9 @@
   ```typescript
   // components/QuoteForm.vue
   const tagsInput = computed({
-    get: () => (props.modelValue.tags || []).join(', '),  // 配列を文字列に変換
+    get: () => (props.modelValue.tags || []).join(', '), // 配列を文字列に変換
     set: (value: string) => {
-      const tags = parseTags(value)  // 文字列を配列に変換
+      const tags = parseTags(value) // 文字列を配列に変換
       emit('update:modelValue', {
         ...props.modelValue,
         tags,
@@ -1296,7 +1334,7 @@
   **この実装のポイント:**
   1. **propsの変更を検知**: `() => props.modelValue`で監視対象を指定
   2. **oldValueとnewValueを比較**: コールバック関数の第2引数と第3引数で取得
-  3. **条件によって処理を分岐**: 
+  3. **条件によって処理を分岐**:
      - テキストが変更された場合
      - 著者IDが変更された場合（さらに条件分岐：新しく設定された場合のみ`loadAuthors()`を実行）
      - タグが変更された場合
@@ -1304,24 +1342,23 @@
 
   **使い分けのまとめ:**
 
-  | 用途 | 使用するAPI | 理由 |
-  |------|------------|------|
-  | プリミティブ値を管理 | `ref` | `reactive`は使えない |
-  | 手動で値を変更する | `ref` または `reactive` | オブジェクトの大きさや更新方法で選択 |
-  | 他の値から自動計算 | `computed` | 依存する値が変わると自動で再計算 |
-  | 値の変更を監視して処理を実行 | `watch` | `oldValue`と`newValue`を比較できる |
-  | 依存する値の変更に応じてデコレート・計算 | `computed` | 自動で再計算される |
-  | propsの変更を検知して条件分岐 | `watch` | `oldValue`と`newValue`を比較できる |
+  | 用途                                     | 使用するAPI             | 理由                                 |
+  | ---------------------------------------- | ----------------------- | ------------------------------------ |
+  | プリミティブ値を管理                     | `ref`                   | `reactive`は使えない                 |
+  | 手動で値を変更する                       | `ref` または `reactive` | オブジェクトの大きさや更新方法で選択 |
+  | 他の値から自動計算                       | `computed`              | 依存する値が変わると自動で再計算     |
+  | 値の変更を監視して処理を実行             | `watch`                 | `oldValue`と`newValue`を比較できる   |
+  | 依存する値の変更に応じてデコレート・計算 | `computed`              | 自動で再計算される                   |
+  | propsの変更を検知して条件分岐            | `watch`                 | `oldValue`と`newValue`を比較できる   |
 
   **本プロジェクトでの実装箇所まとめ:**
-
   - **`ref`**: `pages/quotes/index.vue`（`showAddForm`, `editingQuote`）、`pages/index.vue`（`mood`, `selectedQuote`）など
   - **`reactive`**: `pages/quotes/index.vue`（`form`）
-  - **`computed`**: 
+  - **`computed`**:
     - `pages/authors/index.vue`（`authorsWithCount` - デコレート・計算処理）
     - `pages/authors/[id]/quotes.vue`（`authorQuotes` - フィルタリング）
     - `components/QuoteForm.vue`（`tagsInput` - データ変換）
-  - **`watch`**: 
+  - **`watch`**:
     - `pages/index.vue`（`mood`と`quotes`の監視）
     - `components/QuoteForm.vue`（`props.modelValue`の監視 - oldValue/newValue比較）
 
@@ -1330,6 +1367,7 @@
 ## Nuxtのユニバーサルレンダリング
 
 **評価項目:**
+
 - Nuxtのユニバーサルレンダリングを使って簡単なアプリケーションを作成できる
 
 ### ユニバーサルレンダリングとは
@@ -1349,6 +1387,7 @@
 ```
 
 **問題点:**
+
 - 初回表示が遅い（JavaScriptの実行を待つ必要がある）
 - SEOに不利（検索エンジンが空のHTMLしか見られない）
 
@@ -1367,6 +1406,7 @@
 ```
 
 **メリット:**
+
 - 初回表示が速い（サーバーでHTMLが完成している）
 - SEOに有利（検索エンジンが完成したHTMLを見られる）
 
@@ -1387,6 +1427,7 @@
 ```
 
 **メリット:**
+
 - 初回表示が速い（SSR）
 - 2回目以降も速い（SPA）
 - SEOに有利
@@ -1410,10 +1451,12 @@ if (fetchedQuotes.value) {
 ```
 
 **`useFetch`の動作:**
+
 - **サーバーサイド**: `/api/quotes`エンドポイントを呼び出し、サーバー上のメモリからデータを取得
 - **クライアントサイド**: 同じエンドポイントを呼び出し、APIからデータを取得
 
 **重要なポイント:**
+
 - `await`を使うことで、サーバーサイドでデータ取得が完了してからHTMLを生成
 - クライアントサイドでも同じコードが実行される（ハイドレーション）
 
@@ -1435,6 +1478,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 ```
 
 **動作:**
+
 - サーバーサイドで実行される
 - `server/utils/quotes-storage.ts`からメモリ上のデータを取得する
 - JSON形式でレスポンスを返す
@@ -1505,9 +1549,9 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 
 **ページURLとAPIエンドポイントURLの違い:**
 
-| URL | 種類 | 説明 |
-|-----|------|------|
-| `/quotes` | ページURL | ブラウザのURLバーに表示される（ルーティング） |
+| URL           | 種類                 | 説明                                              |
+| ------------- | -------------------- | ------------------------------------------------- |
+| `/quotes`     | ページURL            | ブラウザのURLバーに表示される（ルーティング）     |
 | `/api/quotes` | APIエンドポイントURL | ブラウザのURLバーには表示されない（内部的な通信） |
 
 **重要なポイント:**
@@ -1541,13 +1585,13 @@ REST（Representational State Transfer）は、Web APIの設計原則である�
 
 **本プロジェクトでのREST API実装:**
 
-| HTTPメソッド | URL | 操作 | 実装ファイル |
-|------------|-----|------|------------|
-| `GET` | `/api/quotes` | 名言一覧を取得 | `server/api/quotes/index.get.ts` |
-| `POST` | `/api/quotes` | 名言を新規作成 | `server/api/quotes/index.post.ts` |
-| `GET` | `/api/quotes/:id` | 指定IDの名言を取得 | `server/api/quotes/[id].get.ts` |
-| `PUT` | `/api/quotes/:id` | 指定IDの名言を更新 | `server/api/quotes/[id].put.ts` |
-| `DELETE` | `/api/quotes/:id` | 指定IDの名言を削除 | `server/api/quotes/[id].delete.ts` |
+| HTTPメソッド | URL               | 操作               | 実装ファイル                       |
+| ------------ | ----------------- | ------------------ | ---------------------------------- |
+| `GET`        | `/api/quotes`     | 名言一覧を取得     | `server/api/quotes/index.get.ts`   |
+| `POST`       | `/api/quotes`     | 名言を新規作成     | `server/api/quotes/index.post.ts`  |
+| `GET`        | `/api/quotes/:id` | 指定IDの名言を取得 | `server/api/quotes/[id].get.ts`    |
+| `PUT`        | `/api/quotes/:id` | 指定IDの名言を更新 | `server/api/quotes/[id].put.ts`    |
+| `DELETE`     | `/api/quotes/:id` | 指定IDの名言を削除 | `server/api/quotes/[id].delete.ts` |
 
 **REST APIの特徴:**
 
@@ -1564,7 +1608,7 @@ const { data } = await useFetch<Quote[]>('/api/quotes')
 // POST /api/quotes - 新規作成
 await $fetch('/api/quotes', {
   method: 'POST',
-  body: { text: '新しい名言', authorId: 'xxx' }
+  body: { text: '新しい名言', authorId: 'xxx' },
 })
 
 // GET /api/quotes/:id - 個別取得
@@ -1573,12 +1617,12 @@ const { data } = await useFetch<Quote>(`/api/quotes/${id}`)
 // PUT /api/quotes/:id - 更新
 await $fetch(`/api/quotes/${id}`, {
   method: 'PUT',
-  body: { text: '更新された名言' }
+  body: { text: '更新された名言' },
 })
 
 // DELETE /api/quotes/:id - 削除
 await $fetch(`/api/quotes/${id}`, {
-  method: 'DELETE'
+  method: 'DELETE',
 })
 ```
 
@@ -1611,6 +1655,7 @@ export function getQuotes(): Quote[] {
 ```
 
 **動作:**
+
 - サーバーのメモリ上にデータを保存する
 - サーバーサイドでのみ実行される
 - サーバー再起動でデータは消える（学習用の簡易実装である）
@@ -1621,10 +1666,10 @@ export function getQuotes(): Quote[] {
 
 **データの保存場所:**
 
-| 場所 | データの状態 | 説明 |
-|------|------------|------|
-| **サーバーサイドのメモリ** | 消える | `server/utils/quotes-storage.ts`の`quotesStorage`変数は空配列に戻る |
-| **クライアントサイドのlocalStorage** | 残る | `pinia-plugin-persistedstate`により、ブラウザのlocalStorageに保存される |
+| 場所                                 | データの状態 | 説明                                                                    |
+| ------------------------------------ | ------------ | ----------------------------------------------------------------------- |
+| **サーバーサイドのメモリ**           | 消える       | `server/utils/quotes-storage.ts`の`quotesStorage`変数は空配列に戻る     |
+| **クライアントサイドのlocalStorage** | 残る         | `pinia-plugin-persistedstate`により、ブラウザのlocalStorageに保存される |
 
 **サーバー再起動後の初回アクセス時の動作:**
 
@@ -1675,6 +1720,7 @@ if (fetchedQuotes.value) {
 ```
 
 **動作:**
+
 - サーバーサイドで取得したデータをPiniaストアに反映する
 - クライアントサイドでも同じストアが使われる（ハイドレーション）
 
@@ -1706,6 +1752,7 @@ if (fetchedQuotes.value) {
 ```
 
 **重要なポイント:**
+
 - この時点で、HTMLにはすでにデータが入っている
 - ユーザーはすぐに内容を見ることができる（SSRのメリット）
 
@@ -1728,6 +1775,7 @@ if (fetchedQuotes.value) {
 ```
 
 **重要なポイント:**
+
 - ハイドレーションは、初回アクセス時に1回だけ行われる
 - サーバーサイドで生成されたHTMLとクライアントサイドの状態を同期する
 - これにより、ページがインタラクティブになる
@@ -1756,6 +1804,7 @@ if (fetchedQuotes.value) {
 ```
 
 **重要なポイント:**
+
 - この時点では、サーバーサイドでのHTML生成は行われない
 - クライアントサイドでデータを取得して画面を更新する
 - ページ全体を再読み込みしないため、高速に動作する
@@ -1784,18 +1833,19 @@ if (fetchedQuotes.value) {
 ```
 
 **重要なポイント:**
+
 - 戻るボタンでも、ページ全体を再読み込みしない
 - クライアントサイドでデータを取得して画面を更新する
 - これもCSR（SPA）の動作である
 
 ### タイミングのまとめ
 
-| タイミング | 処理 | 実行場所 |
-|-----------|------|----------|
-| **初回アクセス時** | SSR（サーバーサイドレンダリング） | サーバーサイド |
-| **初回アクセス時（続き）** | ハイドレーション | クライアントサイド |
-| **2回目以降のページ遷移** | CSR（クライアントサイドレンダリング） | クライアントサイド |
-| **戻るボタンで戻る** | CSR（クライアントサイドレンダリング） | クライアントサイド |
+| タイミング                 | 処理                                  | 実行場所           |
+| -------------------------- | ------------------------------------- | ------------------ |
+| **初回アクセス時**         | SSR（サーバーサイドレンダリング）     | サーバーサイド     |
+| **初回アクセス時（続き）** | ハイドレーション                      | クライアントサイド |
+| **2回目以降のページ遷移**  | CSR（クライアントサイドレンダリング） | クライアントサイド |
+| **戻るボタンで戻る**       | CSR（クライアントサイドレンダリング） | クライアントサイド |
 
 ### 具体的な画面の流れ
 
@@ -1816,6 +1866,7 @@ if (fetchedQuotes.value) {
 ```
 
 **重要なポイント:**
+
 - 初回アクセス時のみSSRが実行される
 - ハイドレーションは、初回アクセス時に1回だけ実行される
 - 2回目以降のページ遷移（リンククリック、戻るボタンなど）は、すべてCSR（SPA）で実行される
@@ -1989,36 +2040,36 @@ if (fetchedQuotes.value) {
 
 **NuxtLinkでページ遷移した時（CSR / SPA）のメリット:**
 
-| メリット | 説明 |
-|---------|------|
-| **高速なページ遷移** | ページ全体を再読み込みしないため、遷移が速い |
-| **スムーズなユーザー体験** | 画面がちらつかない（ページ全体を再読み込みしない） |
-| **サーバー負荷の軽減** | サーバーにHTTPリクエストを送らないため、サーバーの負荷が少ない |
-| **オフライン対応** | 一度読み込んだページは、オフラインでも表示できる（キャッシュがあれば） |
+| メリット                   | 説明                                                                   |
+| -------------------------- | ---------------------------------------------------------------------- |
+| **高速なページ遷移**       | ページ全体を再読み込みしないため、遷移が速い                           |
+| **スムーズなユーザー体験** | 画面がちらつかない（ページ全体を再読み込みしない）                     |
+| **サーバー負荷の軽減**     | サーバーにHTTPリクエストを送らないため、サーバーの負荷が少ない         |
+| **オフライン対応**         | 一度読み込んだページは、オフラインでも表示できる（キャッシュがあれば） |
 
 **NuxtLinkでページ遷移した時（CSR / SPA）のデメリット:**
 
-| デメリット | 説明 |
-|---------|------|
-| **SEOに不利** | 検索エンジンがページの内容を正しく認識できない可能性がある（ただし、初回アクセス時にSSRが実行されるため、この問題は軽減される） |
-| **初回表示が遅い可能性** | データ取得に時間がかかる場合、画面が空の状態が続く可能性がある（ただし、初回アクセス時にSSRが実行されるため、この問題は軽減される） |
-| **JavaScriptが無効な場合に動作しない** | JavaScriptが無効な環境では、ページ遷移ができない |
+| デメリット                             | 説明                                                                                                                                |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **SEOに不利**                          | 検索エンジンがページの内容を正しく認識できない可能性がある（ただし、初回アクセス時にSSRが実行されるため、この問題は軽減される）     |
+| **初回表示が遅い可能性**               | データ取得に時間がかかる場合、画面が空の状態が続く可能性がある（ただし、初回アクセス時にSSRが実行されるため、この問題は軽減される） |
+| **JavaScriptが無効な場合に動作しない** | JavaScriptが無効な環境では、ページ遷移ができない                                                                                    |
 
 **ページリロードやURL直打ちの時（SSR）のメリット:**
 
-| メリット | 説明 |
-|---------|------|
-| **SEOに有利** | 検索エンジンが完成したHTMLを見られるため、SEOに有利 |
-| **初回表示が速い** | サーバーサイドでHTMLが完成しているため、すぐに表示できる |
+| メリット                         | 説明                                                                                         |
+| -------------------------------- | -------------------------------------------------------------------------------------------- |
+| **SEOに有利**                    | 検索エンジンが完成したHTMLを見られるため、SEOに有利                                          |
+| **初回表示が速い**               | サーバーサイドでHTMLが完成しているため、すぐに表示できる                                     |
 | **JavaScriptが無効でも動作する** | JavaScriptが無効な環境でも、基本的な表示は可能（ただし、インタラクティブな機能は動作しない） |
 
 **ページリロードやURL直打ちの時（SSR）のデメリット:**
 
-| デメリット | 説明 |
-|---------|------|
+| デメリット             | 説明                                                     |
+| ---------------------- | -------------------------------------------------------- |
 | **サーバー負荷が高い** | サーバーサイドでHTMLを生成するため、サーバーの負荷が高い |
-| **ページ遷移が遅い** | ページ全体を再読み込みするため、遷移が遅い |
-| **画面がちらつく** | ページ全体を再読み込みするため、画面がちらつく |
+| **ページ遷移が遅い**   | ページ全体を再読み込みするため、遷移が遅い               |
+| **画面がちらつく**     | ページ全体を再読み込みするため、画面がちらつく           |
 
 #### 4. まとめ
 
@@ -2039,6 +2090,7 @@ if (fetchedQuotes.value) {
 ### CSRでもサーバーのデータを取得できる仕組み
 
 **重要な質問:**
+
 - NuxtLinkでCSRが起こるのは理解した
 - でも、どうやってサーバーのデータを取得しているのか？
 - CSRでもサーバーにあるデータを問題なく取得できるのか？
@@ -2060,6 +2112,7 @@ if (fetchedQuotes.value) {
 ```
 
 **重要なポイント:**
+
 - **SSRでは、HTTPリクエストを送らない**
 - **サーバー内で直接関数を呼び出す（内部関数呼び出し）**
 - **サーバー内のメモリから直接データを取得する**
@@ -2080,6 +2133,7 @@ if (fetchedQuotes.value) {
 ```
 
 **重要なポイント:**
+
 - **CSRでは、HTTPリクエストを送る**
 - **APIエンドポイント（`/api/quotes`）にHTTPリクエストを送る**
 - **サーバーがデータを返す（JSON形式）**
@@ -2098,6 +2152,7 @@ const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 **このコードは、SSRとCSRの両方で実行される:**
 
 **SSRの場合:**
+
 ```
 1. サーバーサイドで useFetch('/api/quotes') が実行される
 2. Nuxt 3が server/api/quotes/index.get.ts を直接呼び出す
@@ -2106,6 +2161,7 @@ const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 ```
 
 **CSRの場合:**
+
 ```
 1. クライアントサイドで useFetch('/api/quotes') が実行される
 2. ブラウザが http://localhost:3000/api/quotes にHTTPリクエストを送る
@@ -2152,6 +2208,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 ```
 
 **重要なポイント:**
+
 - **CSRでも、サーバーにHTTPリクエストを送ってデータを取得している**
 - **APIエンドポイント（`/api/quotes`）が呼び出される**
 - **サーバーがデータを返す（JSON形式）**
@@ -2159,17 +2216,18 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 
 #### 4. SSRとCSRの違いのまとめ
 
-| 項目 | SSR（サーバーサイド） | CSR（クライアントサイド） |
-|------|---------------------|------------------------|
+| 項目               | SSR（サーバーサイド）                              | CSR（クライアントサイド）               |
+| ------------------ | -------------------------------------------------- | --------------------------------------- |
 | **データ取得方法** | サーバー内で直接関数を呼び出す（内部関数呼び出し） | APIエンドポイントにHTTPリクエストを送る |
-| **HTTPリクエスト** | なし | あり（GET /api/quotes） |
-| **データの取得元** | サーバー内のメモリから直接取得 | サーバーからHTTPレスポンスで取得 |
-| **実行タイミング** | 初回アクセス時、ページリロード時 | ページ遷移時、データ更新時 |
-| **HTML生成** | サーバーサイドでHTMLを生成 | HTMLは生成しない（画面を更新するだけ） |
+| **HTTPリクエスト** | なし                                               | あり（GET /api/quotes）                 |
+| **データの取得元** | サーバー内のメモリから直接取得                     | サーバーからHTTPレスポンスで取得        |
+| **実行タイミング** | 初回アクセス時、ページリロード時                   | ページ遷移時、データ更新時              |
+| **HTML生成**       | サーバーサイドでHTMLを生成                         | HTMLは生成しない（画面を更新するだけ）  |
 
 #### 5. なぜCSRでもサーバーのデータを取得できるのか？
 
 **理由:**
+
 - **`useFetch`は、SSRとCSRの両方で実行される**
 - **CSRでは、`useFetch`がAPIエンドポイント（`/api/quotes`）にHTTPリクエストを送る**
 - **サーバーAPIルート（`server/api/quotes/index.get.ts`）がそのリクエストを受け取る**
@@ -2180,13 +2238,13 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 
 **まとめ:**
 
-| タイミング | SSRが実行されるか | 説明 |
-|-----------|------------------|------|
-| 初回アクセス時（ページ全体の再読み込み） | ✅ 実行される | アクセスしたページのHTMLのみ生成される |
-| データが変わった時 | ❌ 実行されない | CSRでデータを取得して更新 |
-| リンクをクリックした時 | ❌ 実行されない | CSR（SPA）で実行（初回アクセス後のページ遷移） |
-| 戻るボタンを押した時 | ❌ 実行されない | CSR（SPA）で実行（初回アクセス後のページ遷移の後） |
-| ページ全体を再読み込みした時 | ✅ 実行される | F5キー、Ctrl+Rなど（現在のページのSSRが実行される） |
+| タイミング                               | SSRが実行されるか | 説明                                                |
+| ---------------------------------------- | ----------------- | --------------------------------------------------- |
+| 初回アクセス時（ページ全体の再読み込み） | ✅ 実行される     | アクセスしたページのHTMLのみ生成される              |
+| データが変わった時                       | ❌ 実行されない   | CSRでデータを取得して更新                           |
+| リンクをクリックした時                   | ❌ 実行されない   | CSR（SPA）で実行（初回アクセス後のページ遷移）      |
+| 戻るボタンを押した時                     | ❌ 実行されない   | CSR（SPA）で実行（初回アクセス後のページ遷移の後）  |
+| ページ全体を再読み込みした時             | ✅ 実行される     | F5キー、Ctrl+Rなど（現在のページのSSRが実行される） |
 
 ### 本アプリでの実装箇所
 
@@ -2419,21 +2477,23 @@ onMounted(() => {
 ```
 
 **動作:**
+
 - `onMounted`はクライアントサイドでのみ実行される
 - サーバーサイドでは実行されない（`document`や`window`が存在しないため）
 - 自動ローテーションやイベントリスナーなど、ブラウザでのみ必要な処理を実行する
 
 ### まとめ
 
-| 項目 | 変更前 | 変更後 |
-|------|--------|--------|
-| **データ取得** | クライアントサイドのみ（localStorage） | サーバーサイドでも取得可能（API経由） |
-| **初回表示** | 遅い（JavaScriptの実行を待つ） | 速い（サーバーでHTMLが完成） |
-| **SEO** | 不利（空のHTML） | 有利（完成したHTML） |
-| **ページ遷移** | ページ全体を再読み込み | SPA（ページ全体を再読み込みしない） |
-| **データ保存** | localStorage（クライアント） | サーバーメモリ（サーバー） + localStorage（クライアント） |
+| 項目           | 変更前                                 | 変更後                                                    |
+| -------------- | -------------------------------------- | --------------------------------------------------------- |
+| **データ取得** | クライアントサイドのみ（localStorage） | サーバーサイドでも取得可能（API経由）                     |
+| **初回表示**   | 遅い（JavaScriptの実行を待つ）         | 速い（サーバーでHTMLが完成）                              |
+| **SEO**        | 不利（空のHTML）                       | 有利（完成したHTML）                                      |
+| **ページ遷移** | ページ全体を再読み込み                 | SPA（ページ全体を再読み込みしない）                       |
+| **データ保存** | localStorage（クライアント）           | サーバーメモリ（サーバー） + localStorage（クライアント） |
 
 **本アプリの特徴:**
+
 - ✅ サーバーサイドでデータを取得してHTMLを生成（SSR）
 - ✅ クライアントサイドでも同じコードが実行される（ハイドレーション）
 - ✅ 2回目以降のページ遷移はSPAとして動作（CSR）
@@ -2450,6 +2510,7 @@ onMounted(() => {
 **実装箇所: `server/api/quotes/`配下**
 
 **GET /api/quotes（一覧取得）:**
+
 ```typescript
 // server/api/quotes/index.get.ts
 import type { Quote } from '@/types/quote'
@@ -2465,6 +2526,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 ```
 
 **POST /api/quotes（新規作成）:**
+
 ```typescript
 // server/api/quotes/index.post.ts
 import type { Quote } from '@/types/quote'
@@ -2477,7 +2539,7 @@ import { getQuotes, saveQuotes } from '~/server/utils/quotes-storage'
  */
 export default defineEventHandler(async (event): Promise<Quote> => {
   const body = await readBody<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>(event)
-  
+
   const quotes = getQuotes()
   const now = new Date().toISOString()
   const newQuote: Quote = {
@@ -2486,21 +2548,23 @@ export default defineEventHandler(async (event): Promise<Quote> => {
     createdAt: now,
     updatedAt: now,
   }
-  
+
   quotes.push(newQuote)
   saveQuotes(quotes)
-  
+
   return newQuote
 })
 ```
 
 **その他のエンドポイント:**
+
 - `server/api/quotes/[id].get.ts` - GET /api/quotes/:id（個別取得）
 - `server/api/quotes/[id].put.ts` - PUT /api/quotes/:id（更新）
 - `server/api/quotes/[id].delete.ts` - DELETE /api/quotes/:id（削除）
 - `server/api/authors/index.get.ts` - GET /api/authors（著者一覧取得）
 
 **重要なポイント:**
+
 - これらは**同じNuxtアプリケーション内**の`server/api/`ディレクトリに実装されている
 - Nuxt 3が自動的にこれらのファイルをAPIエンドポイントとして認識する
 - 外部のサーバー（別のプロジェクト）ではなく、同じプロジェクト内で動作する
@@ -2535,6 +2599,7 @@ export function saveQuotes(quotes: Quote[]): void {
 ```
 
 **重要なポイント:**
+
 - データは**サーバーサイドのメモリ（配列）**に保存されている
 - サーバー再起動でデータが消える（永続化されない）
 - 外部のデータベース（Supabaseなど）を使用していない
@@ -2544,6 +2609,7 @@ export function saveQuotes(quotes: Quote[]): void {
 **実装箇所: 各ページコンポーネント（`pages/`配下）**
 
 **例1: `pages/quotes/index.vue`**
+
 ```typescript
 // 78-79行目
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
@@ -2551,6 +2617,7 @@ const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 ```
 
 **例2: `pages/index.vue`**
+
 ```typescript
 // 54-55行目
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
@@ -2558,6 +2625,7 @@ const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 ```
 
 **例3: `pages/authors/index.vue`**
+
 ```typescript
 // 47-48行目
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
@@ -2565,6 +2633,7 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 ```
 
 **重要なポイント:**
+
 - `useFetch('/api/quotes')`を使用してAPIを呼び出している
 - `/api/quotes`は、同じNuxtアプリケーション内の`server/api/quotes/index.get.ts`を指している
 - 外部のサーバー（別のプロジェクト）ではなく、同じプロジェクト内のAPIを呼び出している
@@ -2572,6 +2641,7 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 #### 4. データの流れ（内部APIの場合）
 
 **SSR（サーバーサイド）での動作:**
+
 ```
 1. サーバーサイドで pages/quotes/index.vue が実行される
 2. useFetch('/api/quotes') が実行される（サーバーサイド）
@@ -2583,6 +2653,7 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 ```
 
 **CSR（クライアントサイド）での動作:**
+
 ```
 1. クライアントサイドで pages/quotes/index.vue が実行される
 2. useFetch('/api/quotes') が実行される（クライアントサイド）
@@ -2596,6 +2667,7 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 ```
 
 **重要なポイント:**
+
 - **SSRでは、HTTPリクエストを送らない**（内部関数呼び出し）
 - **CSRでは、HTTPリクエストを送る**が、**同じNuxtアプリケーション内**のサーバーに送る
 - 外部のサーバー（別のプロジェクト）には送らない
@@ -2603,6 +2675,7 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 #### 5. なぜ「内部API」なのか？
 
 **「内部API」と呼ばれる理由:**
+
 1. **同じNuxtアプリケーション内で動作する**
    - `server/api/quotes/index.get.ts`は、同じプロジェクト内の`server/api/`ディレクトリに実装されている
    - 外部のサーバー（別のプロジェクト）ではない
@@ -2616,6 +2689,7 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
    - 外部のデータベース（Supabaseなど）を使用していない
 
 **「外部API」との違い:**
+
 - **内部API**: 同じNuxtアプリケーション内の`server/api/`配下のファイル
 - **外部API**: 別のサーバーやサービス（例: Supabase、JSONPlaceholderなど）
 
@@ -2623,13 +2697,14 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 
 **内部API（同じNuxtアプリ内）の実装箇所:**
 
-| 実装箇所 | ファイル | 説明 |
-|---------|---------|------|
-| **サーバーAPIルート** | `server/api/quotes/index.get.ts` など | APIエンドポイントの実装 |
-| **データストレージ** | `server/utils/quotes-storage.ts` | メモリベースのデータ保存 |
-| **クライアントからの呼び出し** | `pages/quotes/index.vue` など | `useFetch('/api/quotes')`を使用 |
+| 実装箇所                       | ファイル                              | 説明                            |
+| ------------------------------ | ------------------------------------- | ------------------------------- |
+| **サーバーAPIルート**          | `server/api/quotes/index.get.ts` など | APIエンドポイントの実装         |
+| **データストレージ**           | `server/utils/quotes-storage.ts`      | メモリベースのデータ保存        |
+| **クライアントからの呼び出し** | `pages/quotes/index.vue` など         | `useFetch('/api/quotes')`を使用 |
 
 **重要なポイント:**
+
 - これらは**同じNuxtアプリケーション内**で動作している
 - 外部のサーバー（別のプロジェクト）や外部のデータベース（Supabaseなど）を使用していない
 - そのため、「内部API」と呼ばれる
@@ -2637,6 +2712,7 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 ### `server/utils/quotes-storage.ts`の役割について
 
 **質問:**
+
 - `server/utils/quotes-storage.ts`は本プロジェクトではバックエンド的な役割をしているんですかね？
 
 **答え: はい、その通りです。`server/utils/quotes-storage.ts`は、本プロジェクトでバックエンド的な役割（データストレージ層）を担っています。ただし、完全なバックエンドではありません（データが永続化されていないため）。**
@@ -2644,6 +2720,7 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 #### 1. 現在の実装
 
 **`server/utils/quotes-storage.ts`:**
+
 ```typescript
 import type { Quote } from '@/types/quote'
 
@@ -2669,6 +2746,7 @@ export function saveQuotes(quotes: Quote[]): void {
 ```
 
 **使用箇所:**
+
 - `server/api/quotes/index.get.ts` - `getQuotes()`を呼び出してデータを取得
 - `server/api/quotes/index.post.ts` - `getQuotes()`と`saveQuotes()`を使用してデータを保存
 - `server/api/quotes/[id].put.ts` - `getQuotes()`と`saveQuotes()`を使用してデータを更新
@@ -2694,12 +2772,14 @@ export function saveQuotes(quotes: Quote[]): void {
 #### 3. 完全なバックエンドとの違い
 
 **完全なバックエンド（例: Supabase、データベース）:**
+
 - ✅ データの永続化（サーバー再起動してもデータが残る）
 - ✅ トランザクション管理
 - ✅ データの整合性保証
 - ✅ 本番環境でも使用可能
 
 **現在の実装（`server/utils/quotes-storage.ts`）:**
+
 - ❌ データの永続化（サーバー再起動でデータが消える）
 - ❌ トランザクション管理（なし）
 - ❌ データの整合性保証（シンプルな配列操作のみ）
@@ -2713,17 +2793,18 @@ export function saveQuotes(quotes: Quote[]): void {
 【クライアントサイド（フロントエンド）】
 pages/quotes/index.vue
   ↓ useFetch('/api/quotes')
-  
+
 【API層（サーバーサイド）】
 server/api/quotes/index.get.ts
   ↓ getQuotes()
-  
+
 【データストレージ層（サーバーサイド）】
 server/utils/quotes-storage.ts
   ↓ quotesStorage（メモリ）
 ```
 
 **役割分担:**
+
 - **フロントエンド**: ユーザーインターフェース、データの表示
 - **API層**: リクエストの受け取り、データの変換、エラーハンドリング
 - **データストレージ層**: データの保存・取得（バックエンド的な役割）
@@ -2731,6 +2812,7 @@ server/utils/quotes-storage.ts
 #### 5. Supabaseを使った場合との比較
 
 **現在の実装（メモリベース）:**
+
 ```typescript
 // server/utils/quotes-storage.ts
 let quotesStorage: Quote[] = []
@@ -2741,26 +2823,23 @@ export function getQuotes(): Quote[] {
 ```
 
 **Supabaseを使った場合:**
+
 ```typescript
 // server/utils/quotes-storage.ts（または、直接Supabaseを呼び出す）
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-)
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
 export async function getQuotes(): Promise<Quote[]> {
-  const { data, error } = await supabase
-    .from('quotes')
-    .select('*')
-  
+  const { data, error } = await supabase.from('quotes').select('*')
+
   if (error) throw error
   return data
 }
 ```
 
 **違い:**
+
 - **現在の実装**: メモリベース（サーバー再起動でデータが消える）
 - **Supabase**: データベースベース（サーバー再起動してもデータが残る）
 
@@ -2768,15 +2847,16 @@ export async function getQuotes(): Promise<Quote[]> {
 
 **`server/utils/quotes-storage.ts`の役割:**
 
-| 項目 | 説明 |
-|------|------|
-| **役割** | データストレージ層（バックエンド的な役割） |
-| **機能** | データの保存・取得・管理 |
-| **実装** | メモリベース（配列） |
-| **永続化** | ❌ サーバー再起動でデータが消える |
-| **本番環境** | ❌ 使用不可（学習用） |
+| 項目         | 説明                                       |
+| ------------ | ------------------------------------------ |
+| **役割**     | データストレージ層（バックエンド的な役割） |
+| **機能**     | データの保存・取得・管理                   |
+| **実装**     | メモリベース（配列）                       |
+| **永続化**   | ❌ サーバー再起動でデータが消える          |
+| **本番環境** | ❌ 使用不可（学習用）                      |
 
 **重要なポイント:**
+
 - `server/utils/quotes-storage.ts`は、**バックエンド的な役割（データストレージ層）**を担っている
 - ただし、**完全なバックエンドではない**（データが永続化されていないため）
 - **学習用の簡易実装**である
@@ -2787,10 +2867,12 @@ export async function getQuotes(): Promise<Quote[]> {
 ### 評価項目「（非同期通信）・api routeを用いてデータフェッチ処理を実行して画面上で表示までできる」について
 
 **評価項目:**
+
 - （非同期通信）・api routeを用いてデータフェッチ処理を実行して画面上で表示までできる
 - 【例】api routeの中でprisma等を使いDBアクセスをしてデータを取得する
 
 **質問:**
+
 - この評価項目に対しては、現在の内部APIの構成だと満たせませんかね？
 
 **答え: 基本的な要件は満たしていますが、例として挙げられている「DBアクセス（Prismaなど）」は満たしていません。評価を高めるためには、DBアクセスを実装する必要があります。**
@@ -2817,23 +2899,26 @@ export async function getQuotes(): Promise<Quote[]> {
 #### 2. 現在の実装状況
 
 **実装箇所1: APIルート**
+
 ```typescript
 // server/api/quotes/index.get.ts
 import type { Quote } from '@/types/quote'
 import { getQuotes } from '@/server/utils/quotes-storage'
 
 export default defineEventHandler(async (event): Promise<Quote[]> => {
-  return getQuotes()  // メモリからデータを取得
+  return getQuotes() // メモリからデータを取得
 })
 ```
 
 **実装箇所2: データフェッチ処理**
+
 ```typescript
 // pages/quotes/index.vue
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 ```
 
 **実装箇所3: 画面表示**
+
 ```typescript
 // pages/quotes/index.vue
 if (fetchedQuotes.value) {
@@ -2843,9 +2928,10 @@ if (fetchedQuotes.value) {
 ```
 
 **データストレージ:**
+
 ```typescript
 // server/utils/quotes-storage.ts
-let quotesStorage: Quote[] = []  // メモリベース
+let quotesStorage: Quote[] = [] // メモリベース
 
 export function getQuotes(): Quote[] {
   return [...quotesStorage]
@@ -2855,13 +2941,16 @@ export function getQuotes(): Quote[] {
 #### 3. 評価項目の解釈
 
 **必須要件:**
+
 - ✅ api routeを用いてデータフェッチ処理を実行
 - ✅ 画面上で表示までできる
 
 **例として挙げられている要件:**
+
 - ❌ DBアクセス（Prismaなど）
 
 **評価の観点:**
+
 - **基本的な要件は満たしている**: APIルート、データフェッチ、画面表示は実装されている
 - **例として挙げられている要件は満たしていない**: DBアクセス（Prismaなど）は実装されていない
 - **評価を高めるためには**: DBアクセスを実装する必要がある
@@ -2889,24 +2978,19 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 import type { Quote } from '@/types/quote'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-)
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
 export default defineEventHandler(async (event): Promise<Quote[]> => {
   // Supabaseを使用してDBからデータを取得
-  const { data, error } = await supabase
-    .from('quotes')
-    .select('*')
-  
+  const { data, error } = await supabase.from('quotes').select('*')
+
   if (error) {
     throw createError({
       statusCode: 500,
-      message: error.message
+      message: error.message,
     })
   }
-  
+
   return data
 })
 ```
@@ -2915,13 +2999,14 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 
 **現在の実装の評価:**
 
-| 要件 | 必須/例 | 実装状況 | 評価 |
-|------|---------|---------|------|
-| **api routeを用いてデータフェッチ処理を実行** | 必須 | ✅ 実装済み | 満たしている |
-| **画面上で表示までできる** | 必須 | ✅ 実装済み | 満たしている |
-| **DBアクセス（Prismaなど）** | 例 | ❌ 未実装 | 満たしていない |
+| 要件                                          | 必須/例 | 実装状況    | 評価           |
+| --------------------------------------------- | ------- | ----------- | -------------- |
+| **api routeを用いてデータフェッチ処理を実行** | 必須    | ✅ 実装済み | 満たしている   |
+| **画面上で表示までできる**                    | 必須    | ✅ 実装済み | 満たしている   |
+| **DBアクセス（Prismaなど）**                  | 例      | ❌ 未実装   | 満たしていない |
 
 **結論:**
+
 - **基本的な要件は満たしている**: APIルート、データフェッチ、画面表示は実装されている
 - **例として挙げられている要件は満たしていない**: DBアクセス（Prismaなど）は実装されていない
 - **評価を高めるためには**: DBアクセス（Prisma、Supabaseなど）を実装する必要がある
@@ -2931,6 +3016,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 ### DBアクセスの実装について（Supabaseを使う場合）
 
 **質問:**
+
 - このDBアクセスの実装ってのはsupabase使うとかで合ってます？
 - supabase使ってたらDBアクセスすることになんのかな？
 
@@ -2939,12 +3025,14 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 #### 1. Supabaseとは
 
 **Supabaseとは:**
+
 - **Backend as a Service（BaaS）**プラットフォームである
 - **PostgreSQLデータベース**を提供する
 - **REST API**を自動生成する
 - **認証、ストレージ、リアルタイム機能**などを統合的に提供する
 
 **重要なポイント:**
+
 - Supabaseは**PostgreSQLデータベース**を提供している
 - PostgreSQLは**リレーショナルデータベース**である
 - つまり、Supabaseを使うことは**DBアクセス**を実装することになる
@@ -2952,10 +3040,12 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 #### 2. DBアクセスとは
 
 **DBアクセスとは:**
+
 - **データベース**に接続してデータを取得・保存・更新・削除すること
 - **データベース**とは、データを永続的に保存するシステムである
 
 **DBアクセスの例:**
+
 - **Prisma**: ORM（Object-Relational Mapping）を使用してDBアクセス
 - **Supabase**: PostgreSQLデータベースにアクセス
 - **MySQL**: MySQLデータベースにアクセス
@@ -2970,29 +3060,25 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 import type { Quote } from '@/types/quote'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-)
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
 export default defineEventHandler(async (event): Promise<Quote[]> => {
   // Supabaseを使用してDBからデータを取得
-  const { data, error } = await supabase
-    .from('quotes')
-    .select('*')
-  
+  const { data, error } = await supabase.from('quotes').select('*')
+
   if (error) {
     throw createError({
       statusCode: 500,
-      message: error.message
+      message: error.message,
     })
   }
-  
+
   return data
 })
 ```
 
 **この実装は:**
+
 - ✅ **DBアクセス**を実装している（PostgreSQLデータベースにアクセス）
 - ✅ **データの永続化**が実現される（サーバー再起動してもデータが残る）
 - ✅ **評価項目の例**を満たしている（「api routeの中でprisma等を使いDBアクセスをしてデータを取得する」）
@@ -3000,46 +3086,46 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 #### 4. 現在の実装との比較
 
 **現在の実装（メモリベース）:**
+
 ```typescript
 // server/api/quotes/index.get.ts
 import { getQuotes } from '@/server/utils/quotes-storage'
 
 export default defineEventHandler(async (event): Promise<Quote[]> => {
-  return getQuotes()  // メモリからデータを取得（DBアクセスではない）
+  return getQuotes() // メモリからデータを取得（DBアクセスではない）
 })
 ```
 
 **Supabaseを使った実装（DBアクセス）:**
+
 ```typescript
 // server/api/quotes/index.get.ts
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-)
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
 export default defineEventHandler(async (event): Promise<Quote[]> => {
   // PostgreSQLデータベースからデータを取得（DBアクセス）
-  const { data, error } = await supabase
-    .from('quotes')
-    .select('*')
-  
+  const { data, error } = await supabase.from('quotes').select('*')
+
   return data
 })
 ```
 
 **違い:**
+
 - **現在の実装**: メモリからデータを取得（DBアクセスではない）
 - **Supabaseを使った実装**: PostgreSQLデータベースからデータを取得（DBアクセス）
 
 #### 5. 評価項目との関係
 
 **評価項目:**
+
 - （非同期通信）・api routeを用いてデータフェッチ処理を実行して画面上で表示までできる
 - 【例】api routeの中でprisma等を使いDBアクセスをしてデータを取得する
 
 **Supabaseを使った場合:**
+
 - ✅ **api routeを用いてデータフェッチ処理を実行** → 満たしている
 - ✅ **画面上で表示までできる** → 満たしている
 - ✅ **DBアクセスをしてデータを取得** → 満たしている（Supabase = PostgreSQLデータベース）
@@ -3049,6 +3135,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 #### 6. PrismaとSupabaseの違い
 
 **Prismaを使った場合:**
+
 ```typescript
 // server/api/quotes/index.get.ts
 import { prisma } from '@/server/utils/prisma'
@@ -3061,26 +3148,23 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 ```
 
 **Supabaseを使った場合:**
+
 ```typescript
 // server/api/quotes/index.get.ts
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-)
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
 export default defineEventHandler(async (event): Promise<Quote[]> => {
   // Supabaseを使用してDBからデータを取得
-  const { data, error } = await supabase
-    .from('quotes')
-    .select('*')
-  
+  const { data, error } = await supabase.from('quotes').select('*')
+
   return data
 })
 ```
 
 **違い:**
+
 - **Prisma**: ORM（Object-Relational Mapping）を使用してDBアクセス
 - **Supabase**: PostgreSQLデータベースを提供するBaaSを使用してDBアクセス
 - **どちらもDBアクセスを実装している**
@@ -3089,17 +3173,19 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 
 **Supabaseを使う = DBアクセス:**
 
-| 項目 | 説明 |
-|------|------|
-| **Supabaseとは** | PostgreSQLデータベースを提供するBaaS |
-| **DBアクセスとは** | データベースに接続してデータを取得・保存・更新・削除すること |
-| **Supabaseを使うこと** | PostgreSQLデータベースにアクセスすること = DBアクセス |
+| 項目                   | 説明                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| **Supabaseとは**       | PostgreSQLデータベースを提供するBaaS                         |
+| **DBアクセスとは**     | データベースに接続してデータを取得・保存・更新・削除すること |
+| **Supabaseを使うこと** | PostgreSQLデータベースにアクセスすること = DBアクセス        |
 
 **評価項目との関係:**
+
 - ✅ **Supabaseを使うことで、評価項目の例として挙げられている「DBアクセス」を実装できる**
 - ✅ **「api routeの中でprisma等を使いDBアクセスをしてデータを取得する」の「prisma等」には、Supabaseも含まれる**
 
 **重要なポイント:**
+
 - **Supabaseを使うことは、DBアクセスを実装することになる**
 - **SupabaseはPostgreSQLデータベースを提供しているため、DBアクセスである**
 - **評価項目の例として挙げられている「DBアクセス」は、Supabaseを使うことで満たすことができる**
@@ -3107,6 +3193,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 **つまり、Supabaseを使うことで、DBアクセスを実装することができ、評価項目の例として挙げられている要件を満たすことができる。**
 
 **自分的によく学んどいた方がいいと思うこと**
+
 - Vue2とVue3の大きな違いは？
 - そもそもTypeScriptがいいってなってるのはなんでなの？
 - Vue3のライフサイクルフック
@@ -3129,33 +3216,33 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 1. ユーザー操作
    pages/quotes/index.vue（または他のページ）
    ↓ フォームに入力して「保存」ボタンをクリック
-   
+
 2. ページコンポーネント
    pages/quotes/index.vue
    - handleSubmit() 関数が実行される
    - addQuote(formValue) を呼び出す
-   
+
 3. Composable
    composables/useQuotes.ts
    - useQuotes() が addQuote を返す
    - store.addQuote(quote) を呼び出す
-   
+
 4. Store（Pinia）
    stores/quotes.ts
    - useQuotesStore.addQuote(quote)
    - repository.add(quote) を呼び出す
    - 成功後、quotes.value.push(newQuote) でストアを更新
-   
+
 5. Repository Factory
    repositories/factory.ts
    - createQuoteRepository() が実行される
    - 環境変数に応じて ApiQuoteRepository または LocalQuoteRepository を返す
-   
+
 6. Repository（API使用時）
    repositories/ApiQuoteRepository.ts
    - ApiQuoteRepository.add(quote)
    - $fetch('/api/quotes', { method: 'POST', body: quote }) を実行
-   
+
 7. サーバーAPIルート
    server/api/quotes/index.post.ts
    - defineEventHandler がリクエストを受け取る
@@ -3166,11 +3253,11 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
    - Supabaseの形式（created_at, updated_at, author_id）に変換
    - supabase.from('quotes').insert([supabaseQuote]).select().single() でデータを挿入
    - アプリの形式（createdAt, updatedAt, authorId）に変換して返す
-   
+
 8. Supabase
    - PostgreSQLデータベースにデータを保存
    - 保存されたデータを返す
-   
+
 9. レスポンスの流れ
    Supabase → server/api/quotes/index.post.ts → repositories/ApiQuoteRepository.ts → stores/quotes.ts → composables/useQuotes.ts → pages/quotes/index.vue
 ```
@@ -3196,12 +3283,12 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 1. ページアクセス
    pages/quotes/index.vue（または他のページ）
    ↓ ページが読み込まれる
-   
+
 2. サーバーサイド（SSR）
    pages/quotes/index.vue
    - useFetch<Quote[]>('/api/quotes') が実行される（サーバーサイド）
    - Nuxt 3が自動的に server/api/quotes/index.get.ts を呼び出す
-   
+
 3. サーバーAPIルート
    server/api/quotes/index.get.ts
    - defineEventHandler が実行される
@@ -3209,18 +3296,18 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
    - supabase.from('quotes').select('*').order('created_at', { ascending: false }) でデータを取得
    - Supabaseの形式（created_at, updated_at, author_id）をアプリの形式（createdAt, updatedAt, authorId）に変換
    - データを返す
-   
+
 4. Supabase
    - PostgreSQLデータベースからデータを取得
    - データを返す
-   
+
 5. クライアントサイド（CSR）
    pages/quotes/index.vue
    - useFetch<Quote[]>('/api/quotes') が実行される（クライアントサイド）
    - HTTPリクエストで /api/quotes エンドポイントを呼び出す
    - サーバーAPIルートが実行される（上記と同じ）
    - 取得したデータを store.quotes に反映
-   
+
 6. Store（Pinia）
    stores/quotes.ts
    - quotes.value が更新される
@@ -3233,27 +3320,27 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 1. ページアクセス
    pages/quotes/[id].vue
    ↓ 動的ルートでページが読み込まれる
-   
+
 2. ページコンポーネント
    pages/quotes/[id].vue
    - useRoute() で route.params.id を取得
    - useQuotes() で getQuote(id) を呼び出す
-   
+
 3. Composable
    composables/useQuotes.ts
    - store.getQuote(id) を呼び出す
-   
+
 4. Store（Pinia）
    stores/quotes.ts
    - useQuotesStore.getQuote(id)
    - quotes.value.find((q) => q.id === id) でストアから取得
    - または、repository.get(id) を呼び出す（ストアにない場合）
-   
+
 5. Repository（API使用時）
    repositories/ApiQuoteRepository.ts
    - ApiQuoteRepository.get(id)
    - $fetch(`/api/quotes/${id}`, { method: 'GET' }) を実行
-   
+
 6. サーバーAPIルート
    server/api/quotes/[id].get.ts
    - defineEventHandler がリクエストを受け取る
@@ -3262,7 +3349,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
    - supabase.from('quotes').select('*').eq('id', id).single() でデータを取得
    - エラーハンドリング（404など）
    - Supabaseの形式をアプリの形式に変換して返す
-   
+
 7. Supabase
    - PostgreSQLデータベースから指定IDのデータを取得
    - データを返す
@@ -3287,36 +3374,36 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 1. ユーザー操作
    pages/quotes/index.vue（または他のページ）
    ↓ 「編集」ボタンをクリック
-   
+
 2. ページコンポーネント
    pages/quotes/index.vue
    - startEdit(quote) 関数が実行される
    - editingQuote.value = quote で編集対象を設定
    - form に quote の値を設定
-   
+
 3. ユーザー操作
    ↓ フォームを編集して「保存」ボタンをクリック
-   
+
 4. ページコンポーネント
    pages/quotes/index.vue
    - handleSubmit() 関数が実行される
    - updateQuote(editingQuote.value.id, formValue) を呼び出す
-   
+
 5. Composable
    composables/useQuotes.ts
    - store.updateQuote(id, updates) を呼び出す
-   
+
 6. Store（Pinia）
    stores/quotes.ts
    - useQuotesStore.updateQuote(id, updates)
    - repository.update(id, updates) を呼び出す
    - 成功後、quotes.value[index] = updated でストアを更新
-   
+
 7. Repository（API使用時）
    repositories/ApiQuoteRepository.ts
    - ApiQuoteRepository.update(id, updates)
    - $fetch(`/api/quotes/${id}`, { method: 'PUT', body: updates }) を実行
-   
+
 8. サーバーAPIルート
    server/api/quotes/[id].put.ts
    - defineEventHandler がリクエストを受け取る
@@ -3329,7 +3416,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
    - supabase.from('quotes').update(updateData).eq('id', id).select().single() でデータを更新
    - エラーハンドリング（404など）
    - Supabaseの形式をアプリの形式に変換して返す
-   
+
 9. Supabase
    - PostgreSQLデータベースのデータを更新
    - 更新されたデータを返す
@@ -3353,28 +3440,28 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 1. ユーザー操作
    pages/quotes/index.vue（または他のページ）
    ↓ 「削除」ボタンをクリック
-   
+
 2. ページコンポーネント
    pages/quotes/index.vue
    - handleDelete(quote.id) 関数が実行される
    - 確認ダイアログを表示（必要に応じて）
    - removeQuote(quote.id) を呼び出す
-   
+
 3. Composable
    composables/useQuotes.ts
    - store.removeQuote(id) を呼び出す
-   
+
 4. Store（Pinia）
    stores/quotes.ts
    - useQuotesStore.removeQuote(id)
    - repository.remove(id) を呼び出す
    - 成功後、quotes.value = quotes.value.filter((q) => q.id !== id) でストアを更新
-   
+
 5. Repository（API使用時）
    repositories/ApiQuoteRepository.ts
    - ApiQuoteRepository.remove(id)
    - $fetch(`/api/quotes/${id}`, { method: 'DELETE' }) を実行
-   
+
 6. サーバーAPIルート
    server/api/quotes/[id].delete.ts
    - defineEventHandler がリクエストを受け取る
@@ -3383,7 +3470,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
    - 削除前に存在確認を行う（supabase.from('quotes').select('id').eq('id', id).single()）
    - エラーハンドリング（404など）
    - supabase.from('quotes').delete().eq('id', id) でデータを削除
-   
+
 7. Supabase
    - PostgreSQLデータベースからデータを削除
    - 削除が完了する
@@ -3408,33 +3495,33 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 1. ユーザー操作
    pages/authors/index.vue（または他のページ）
    ↓ フォームに入力して「保存」ボタンをクリック
-   
+
 2. ページコンポーネント
    pages/authors/index.vue
    - handleSubmit() 関数が実行される
    - addAuthor(formValue) を呼び出す
-   
+
 3. Composable
    composables/useAuthors.ts
    - useAuthors() が addAuthor を返す
    - store.addAuthor(author) を呼び出す
-   
+
 4. Store（Pinia）
    stores/authors.ts
    - useAuthorsStore.addAuthor(author)
    - repository.add(author) を呼び出す
    - 成功後、authors.value.push(newAuthor) でストアを更新
-   
+
 5. Repository Factory
    repositories/factory.ts
    - createAuthorRepository() が実行される
    - 環境変数に応じて ApiAuthorRepository または LocalAuthorRepository を返す
-   
+
 6. Repository（API使用時）
    repositories/ApiAuthorRepository.ts
    - ApiAuthorRepository.add(author)
    - $fetch('/api/authors', { method: 'POST', body: author }) を実行
-   
+
 7. サーバーAPIルート
    server/api/authors/index.post.ts
    - defineEventHandler がリクエストを受け取る
@@ -3444,7 +3531,7 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
    - Supabaseの形式（created_at, updated_at）に変換
    - supabase.from('authors').insert([supabaseAuthor]).select().single() でデータを挿入
    - アプリの形式（createdAt, updatedAt）に変換して返す
-   
+
 8. Supabase
    - PostgreSQLデータベースにデータを保存
    - 保存されたデータを返す
@@ -3470,12 +3557,12 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 1. ページアクセス
    pages/authors/index.vue（または他のページ）
    ↓ ページが読み込まれる
-   
+
 2. サーバーサイド（SSR）
    pages/authors/index.vue
    - useFetch<Author[]>('/api/authors') が実行される（サーバーサイド）
    - Nuxt 3が自動的に server/api/authors/index.get.ts を呼び出す
-   
+
 3. サーバーAPIルート
    server/api/authors/index.get.ts
    - defineEventHandler が実行される
@@ -3483,18 +3570,18 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
    - supabase.from('authors').select('*').order('created_at', { ascending: false }) でデータを取得
    - Supabaseの形式（created_at, updated_at）をアプリの形式（createdAt, updatedAt）に変換
    - データを返す
-   
+
 4. Supabase
    - PostgreSQLデータベースからデータを取得
    - データを返す
-   
+
 5. クライアントサイド（CSR）
    pages/authors/index.vue
    - useFetch<Author[]>('/api/authors') が実行される（クライアントサイド）
    - HTTPリクエストで /api/authors エンドポイントを呼び出す
    - サーバーAPIルートが実行される（上記と同じ）
    - 取得したデータを store.authors に反映
-   
+
 6. Store（Pinia）
    stores/authors.ts
    - authors.value が更新される
@@ -3573,3 +3660,593 @@ export default defineEventHandler(async (event): Promise<Quote[]> => {
 - **アプリの形式 → Supabaseの形式**: `createdAt` → `created_at`, `authorId` → `author_id`
 - **Supabaseの形式 → アプリの形式**: `created_at` → `createdAt`, `author_id` → `authorId`
 - 変換は主に `server/api/*.ts` で行われる
+
+---
+
+## CSSフレームワークの導入（Tailwind CSS）
+
+**評価項目:**
+
+- アプリケーションにCSSフレームワークを導入することができる
+- 導入したフレームワークで推奨されるコンポーネントのスタイリングをドキュメントを参照し実装することができる
+
+### Tailwind CSSとは
+
+**Tailwind CSS**は、ユーティリティファーストのCSSフレームワークです。従来のCSSフレームワーク（Bootstrapなど）とは異なり、あらかじめ定義されたコンポーネントクラスではなく、小さなユーティリティクラスを組み合わせてスタイルを構築します。
+
+**特徴:**
+
+- **ユーティリティファースト**: 小さなクラスを組み合わせてスタイルを構築
+- **カスタマイズ可能**: `tailwind.config.js`でテーマをカスタマイズ可能
+- **レスポンシブ対応**: `md:`, `lg:`などのプレフィックスで簡単にレスポンシブ対応
+- **ダークモード対応**: `dark:`プレフィックスでダークモード対応
+- **パージ機能**: 使用されていないCSSを自動的に削除してバンドルサイズを最適化
+
+### 1. パッケージのインストール
+
+**実装箇所: `package.json`**
+
+```json
+{
+  "devDependencies": {
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.33"
+  }
+}
+```
+
+`@nuxtjs/tailwindcss`は、Nuxt.js用のTailwind CSSモジュールです。これにより、Nuxt.jsプロジェクトで簡単にTailwind CSSを使用できます。
+
+**インストールコマンド:**
+
+```bash
+npm install -D @nuxtjs/tailwindcss autoprefixer postcss
+```
+
+### 2. Nuxtモジュールの登録
+
+**実装箇所: `nuxt.config.ts`**
+
+```typescript
+export default defineNuxtConfig({
+  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss'],
+  // ...
+})
+```
+
+`modules`配列に`@nuxtjs/tailwindcss`を追加することで、Tailwind CSSが自動的に有効化されます。これが**CSSフレームワークを導入する**という評価項目に該当する主要な実装箇所です。
+
+### 3. Tailwind設定ファイルの作成
+
+**実装箇所: `tailwind.config.js`**
+
+```javascript
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './components/**/*.{js,vue,ts}',
+    './layouts/**/*.vue',
+    './pages/**/*.vue',
+    './plugins/**/*.{js,ts}',
+    './app.vue',
+    './error.vue',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+**重要な設定:**
+
+- **`content`**: Tailwind CSSがクラスを検索するファイルパスを指定。これにより、使用されていないCSSが自動的に削除されます（パージ機能）
+- **`theme.extend`**: デフォルトのテーマを拡張する設定。カスタムカラーやブレークポイントを追加可能
+
+### 4. 実際の使用例
+
+**実装箇所: `components/QuoteForm.vue`**
+
+#### 4.1. タイポグラフィ（文字サイズ・太さ）
+
+```vue
+<h2 class="formTitle text-xl md:text-2xl font-semibold">
+  {{ isEditMode ? '編集' : '新規追加' }}
+</h2>
+```
+
+**使用しているクラス:**
+
+- `text-xl`: フォントサイズを`1.25rem`（20px）に設定
+- `md:text-2xl`: タブレット以上（768px以上）でフォントサイズを`1.5rem`（24px）に設定
+- `font-semibold`: フォントの太さを600に設定
+
+#### 4.2. レイアウト（Flexbox）
+
+```vue
+<div class="formActions flex flex-col md:flex-row gap-3 md:gap-4">
+  <button type="submit" class="button ...">
+    追加
+  </button>
+  <button type="button" class="button buttonSecondary ...">
+    キャンセル
+  </button>
+</div>
+```
+
+**使用しているクラス:**
+
+- `flex`: Flexboxレイアウトを有効化
+- `flex-col`: フレックス方向を縦（column）に設定（モバイル）
+- `md:flex-row`: タブレット以上でフレックス方向を横（row）に設定
+- `gap-3`: 要素間の間隔を`0.75rem`（12px）に設定
+- `md:gap-4`: タブレット以上で間隔を`1rem`（16px）に設定
+
+#### 4.3. フォーム要素のスタイリング
+
+```vue
+<textarea
+  class="input block w-full rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0"
+  ...
+/>
+```
+
+**使用しているクラス:**
+
+- `block`: ブロック要素として表示
+- `w-full`: 幅を100%に設定
+- `rounded-md`: 角丸を`0.375rem`（6px）に設定
+- `shadow-sm`: 小さな影を追加
+- `transition-colors`: 色の変化にトランジション効果を追加
+- `focus:outline-none`: フォーカス時のアウトラインを削除
+- `focus:ring-2`: フォーカス時にリング（輪郭）を2px追加
+- `focus:ring-offset-0`: リングのオフセットを0に設定
+
+#### 4.4. ボタンのスタイリング
+
+```vue
+<button
+  type="submit"
+  class="button inline-flex justify-center items-center px-8 py-3.5 border-transparent text-base font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
+>
+  追加
+</button>
+```
+
+**使用しているクラス:**
+
+- `inline-flex`: インラインフレックスボックスとして表示
+- `justify-center`: 主軸方向（横）の中央揃え
+- `items-center`: 交差軸方向（縦）の中央揃え
+- `px-8`: 左右のパディングを`2rem`（32px）に設定
+- `py-3.5`: 上下のパディングを`0.875rem`（14px）に設定
+- `border-transparent`: ボーダーを透明に設定
+- `text-base`: フォントサイズを`1rem`（16px）に設定
+- `font-medium`: フォントの太さを500に設定
+
+### 5. Tailwind CSSと既存のSCSSの組み合わせ
+
+本プロジェクトでは、Tailwind CSSのユーティリティクラスと既存のSCSSスタイルを組み合わせて使用しています。
+
+**実装方針:**
+
+- **Tailwind CSS**: レイアウト、スペーシング、タイポグラフィ、レスポンシブ対応など
+- **SCSS**: テーマカラー（CSS変数）、カスタムスタイル、ミックスインなど
+
+**例: `components/QuoteForm.vue`**
+
+```vue
+<template>
+  <!-- Tailwind CSSのユーティリティクラスと既存のSCSSスタイルを組み合わせ -->
+  <div class="formCard shadow-sm">
+    <!-- Tailwindクラス: shadow-sm -->
+    <!-- SCSSクラス: formCard（カスタムスタイル） -->
+  </div>
+</template>
+
+<style scoped lang="scss">
+.formCard {
+  background-color: var(--color-surface); // CSS変数を使用
+  border: 1px solid var(--color-border);
+  padding: 1.5rem;
+}
+</style>
+```
+
+### 6. レスポンシブデザインとの連携
+
+Tailwind CSSのレスポンシブプレフィックス（`md:`, `lg:`など）と、既存のSCSS変数（`$breakpoint-tablet`）を組み合わせて使用しています。
+
+**Tailwind CSSのブレークポイント:**
+
+- `sm:`: 640px以上
+- `md:`: 768px以上（`$breakpoint-tablet: 769px`とほぼ同じ）
+- `lg:`: 1024px以上（`$breakpoint-desktop: 1025px`とほぼ同じ）
+- `xl:`: 1280px以上
+- `2xl:`: 1536px以上
+
+### 7. 評価項目との関係
+
+**評価項目「アプリケーションにCSSフレームワークを導入することができる」に該当する実装:**
+
+1. ✅ **`package.json`にパッケージ追加**: `@nuxtjs/tailwindcss`を追加
+2. ✅ **`nuxt.config.ts`でモジュール登録**: `modules`配列に`@nuxtjs/tailwindcss`を追加（**主要な実装箇所**）
+3. ✅ **`tailwind.config.js`で設定**: Tailwind CSSの設定ファイルを作成
+4. ✅ **実際に使用**: コンポーネントでTailwind CSSのユーティリティクラスを使用
+
+**評価項目「導入したフレームワークで推奨されるコンポーネントのスタイリングをドキュメントを参照し実装することができる」に該当する実装:**
+
+1. ✅ **Tailwind CSS公式ドキュメントを参照**: コメントにドキュメントURLを記載
+2. ✅ **ユーティリティクラスを組み合わせて実装**: `flex`, `gap`, `rounded-md`, `shadow-sm`などを組み合わせ
+3. ✅ **レスポンシブ対応**: `md:flex-row`, `md:text-2xl`などのレスポンシブプレフィックスを使用
+4. ✅ **フォーカス状態のスタイリング**: `focus:ring-2`, `focus:outline-none`など、Tailwind CSS推奨のフォーカススタイルを実装
+
+### 8. 参考リンク
+
+- **Tailwind CSS公式ドキュメント**: https://tailwindcss.com/docs
+- **Nuxt Tailwind CSSモジュール**: https://tailwindcss.nuxtjs.org/
+
+### 9. まとめ
+
+Tailwind CSSを導入することで、以下のメリットが得られます：
+
+1. **開発速度の向上**: 小さなユーティリティクラスを組み合わせるだけで、素早くスタイルを構築できる
+2. **一貫性の確保**: デザインシステムに基づいた一貫したスタイルを適用できる
+3. **レスポンシブ対応の簡素化**: プレフィックスを追加するだけでレスポンシブ対応が可能
+4. **バンドルサイズの最適化**: 使用されていないCSSが自動的に削除される
+5. **カスタマイズ性**: `tailwind.config.js`でテーマを自由にカスタマイズできる
+
+**重要なポイント:**
+
+- **`nuxt.config.ts`の`modules`配列への追加が、CSSフレームワーク導入の明確な証拠**
+- **Tailwind CSSはユーティリティファーストのアプローチを採用しているため、コンポーネントクラスではなく、ユーティリティクラスを組み合わせて実装する**
+
+---
+
+## ESLint / Prettier等の静的コード解析ツールとpre-commitの設定
+
+**評価項目:**
+
+- ESLint / Prettier等の静的コード解析ツールをアプリケーションに導入した上で、pre-commitの設定ができる
+
+### 1. ESLintの導入と設定
+
+#### 1.1. 依存関係の追加
+
+**実装箇所: `package.json`**
+
+```json
+{
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.1",
+    "@typescript-eslint/parser": "^6.19.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.20.0"
+  }
+}
+```
+
+**各パッケージの役割:**
+
+- `eslint`: ESLintのコアライブラリ
+- `@typescript-eslint/eslint-plugin`: TypeScript用のESLintルール
+- `@typescript-eslint/parser`: TypeScriptコードを解析するパーサー
+- `eslint-config-prettier`: Prettierと競合するESLintルールを無効化
+- `eslint-plugin-vue`: Vue.js用のESLintルール
+
+#### 1.2. ESLint設定ファイル
+
+**実装箇所: `.eslintrc.cjs`**
+
+```javascript
+module.exports = {
+  root: true,
+  env: {
+    browser: true,
+    es2021: true,
+    node: true,
+  },
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:vue/vue3-recommended',
+    'prettier',
+  ],
+  parser: 'vue-eslint-parser',
+  parserOptions: {
+    ecmaVersion: 'latest',
+    parser: '@typescript-eslint/parser',
+    sourceType: 'module',
+  },
+  plugins: ['@typescript-eslint'],
+  rules: {
+    'vue/multi-word-component-names': 'off',
+  },
+}
+```
+
+**設定の説明:**
+
+- `root: true`: このディレクトリがESLint設定のルートであることを示す
+- `env`: 実行環境を指定（ブラウザ、ES2021、Node.js）
+- `extends`: 使用するルールセットを指定
+  - `eslint:recommended`: ESLintの推奨ルール
+  - `plugin:@typescript-eslint/recommended`: TypeScriptの推奨ルール
+  - `plugin:vue/vue3-recommended`: Vue 3の推奨ルール
+  - `prettier`: Prettierと競合するルールを無効化
+- `parser`: Vueファイルを解析するパーサー
+- `parserOptions.parser`: TypeScriptコードを解析するパーサー
+- `rules`: カスタムルールの設定（`vue/multi-word-component-names`を無効化）
+
+#### 1.3. ESLint実行スクリプト
+
+**実装箇所: `package.json`**
+
+```json
+{
+  "scripts": {
+    "lint": "eslint ."
+  }
+}
+```
+
+**使用方法:**
+
+```bash
+npm run lint
+```
+
+### 2. Prettierの導入と設定
+
+#### 2.1. 依存関係の追加
+
+**実装箇所: `package.json`**
+
+```json
+{
+  "devDependencies": {
+    "prettier": "^3.2.4"
+  }
+}
+```
+
+#### 2.2. Prettier設定ファイル
+
+**実装箇所: `.prettierrc`**
+
+```json
+{
+  "semi": false,
+  "singleQuote": true,
+  "printWidth": 100,
+  "tabWidth": 2,
+  "trailingComma": "es5"
+}
+```
+
+**設定の説明:**
+
+- `semi: false`: セミコロンを付けない
+- `singleQuote: true`: シングルクォートを使用
+- `printWidth: 100`: 1行の最大文字数を100文字に設定
+- `tabWidth: 2`: インデントを2スペースに設定
+- `trailingComma: "es5"`: ES5で有効な箇所に末尾カンマを付ける
+
+#### 2.3. Prettier実行スクリプト
+
+**実装箇所: `package.json`**
+
+```json
+{
+  "scripts": {
+    "format": "prettier --write ."
+  }
+}
+```
+
+**使用方法:**
+
+```bash
+npm run format
+```
+
+### 3. pre-commitの設定（husky + lint-staged）
+
+#### 3.1. 依存関係の追加
+
+**実装箇所: `package.json`**
+
+```json
+{
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2"
+  }
+}
+```
+
+**各パッケージの役割:**
+
+- `husky`: Gitフックを管理するツール
+- `lint-staged`: ステージングされたファイルのみに対してlintを実行するツール
+
+#### 3.2. huskyの初期化
+
+**実装箇所: `package.json`**
+
+```json
+{
+  "scripts": {
+    "prepare": "husky"
+  }
+}
+```
+
+**動作:**
+
+- `npm install`実行時に自動的に`husky`が初期化される
+- `.husky`ディレクトリが作成される
+
+**初期化コマンド（初回のみ）:**
+
+```bash
+npx husky init
+```
+
+#### 3.3. pre-commitフックの作成
+
+**実装箇所: `.husky/pre-commit`**
+
+```
+npx lint-staged
+```
+
+**動作:**
+
+- Gitコミット時に自動的に実行される
+- `lint-staged`を実行して、ステージングされたファイルに対してlintとformatを実行
+
+#### 3.4. lint-stagedの設定
+
+**実装箇所: `package.json`**
+
+```json
+{
+  "lint-staged": {
+    "*.{js,ts,vue}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,scss,css,html,yml,yaml,tsx,jsx}": ["prettier --write"]
+  }
+}
+```
+
+**設定の説明:**
+
+- `*.{js,ts,vue}`: JavaScript、TypeScript、Vueファイルに対して
+  - `eslint --fix`: ESLintの自動修正を実行
+  - `prettier --write`: Prettierでフォーマット
+- `*.{json,md,scss,css,html,yml,yaml,tsx,jsx}`: その他のファイルに対して
+  - `prettier --write`: Prettierでフォーマットのみ
+
+### 4. 動作の流れ
+
+#### 4.1. コミット時の動作
+
+```
+1. ユーザーが git commit を実行
+   ↓
+2. Gitがpre-commitフックを実行
+   ↓
+3. .husky/pre-commit が実行される
+   ↓
+4. npx lint-staged が実行される
+   ↓
+5. lint-stagedがpackage.jsonの設定を読み込む
+   ↓
+6. ステージングされたファイルに対して:
+   - *.{js,ts,vue} → eslint --fix → prettier --write
+   - *.{json,md,...} → prettier --write
+   ↓
+7. エラーがある場合:
+   - コミットが中断される
+   - エラーメッセージが表示される
+   ↓
+8. エラーがない場合:
+   - コミットが続行される
+```
+
+#### 4.2. 手動での実行
+
+**ESLintのみ実行:**
+
+```bash
+npm run lint
+```
+
+**Prettierのみ実行:**
+
+```bash
+npm run format
+```
+
+**両方を実行:**
+
+```bash
+npm run lint && npm run format
+```
+
+### 5. 実装ファイル一覧
+
+| ファイル            | 役割                                  |
+| ------------------- | ------------------------------------- |
+| `.eslintrc.cjs`     | ESLintの設定ファイル                  |
+| `.prettierrc`       | Prettierの設定ファイル                |
+| `.husky/pre-commit` | pre-commitフックの実装                |
+| `package.json`      | 依存関係、スクリプト、lint-staged設定 |
+
+### 6. 評価項目との関係
+
+**評価項目「ESLint / Prettier等の静的コード解析ツールをアプリケーションに導入した上で、pre-commitの設定ができる」に該当する実装:**
+
+1. ✅ **ESLintの導入**
+   - `package.json`にESLint関連の依存関係を追加
+   - `.eslintrc.cjs`でESLintの設定を実装
+   - `npm run lint`スクリプトを追加
+
+2. ✅ **Prettierの導入**
+   - `package.json`にPrettierの依存関係を追加
+   - `.prettierrc`でPrettierの設定を実装
+   - `npm run format`スクリプトを追加
+   - `eslint-config-prettier`でESLintとPrettierの競合を解消
+
+3. ✅ **pre-commitの設定**
+   - `package.json`にhuskyとlint-stagedの依存関係を追加
+   - `package.json`の`prepare`スクリプトでhuskyを初期化
+   - `.husky/pre-commit`でpre-commitフックを実装
+   - `package.json`の`lint-staged`設定で、ステージングされたファイルに対してlintとformatを実行
+
+### 7. 重要なポイント
+
+**ESLintとPrettierの連携:**
+
+- `eslint-config-prettier`を使用することで、Prettierと競合するESLintルールを無効化
+- `.eslintrc.cjs`の`extends`に`'prettier'`を追加することで、競合を解消
+
+**pre-commitフックのメリット:**
+
+- コミット前に自動的にコード品質チェックが実行される
+- チーム全体でコードスタイルが統一される
+- エラーがあるコードがコミットされることを防ぐ
+
+**lint-stagedのメリット:**
+
+- ステージングされたファイルのみを対象とするため、高速に動作する
+- 変更されていないファイルに対してlintを実行しないため、効率的
+
+**huskyの動作:**
+
+- `npm install`時に自動的に`prepare`スクリプトが実行される
+- `.husky`ディレクトリがGitリポジトリに含まれることで、チーム全体で同じフック設定を共有できる
+
+### 8. トラブルシューティング
+
+**pre-commitフックが実行されない場合:**
+
+```bash
+# huskyを再初期化
+npx husky init
+
+# .husky/pre-commitファイルの実行権限を確認
+chmod +x .husky/pre-commit
+```
+
+**lint-stagedが動作しない場合:**
+
+- `package.json`の`lint-staged`設定を確認
+- ファイルパターンが正しいか確認（`*.{js,ts,vue}`など）
+
+**ESLintとPrettierの競合が発生する場合:**
+
+- `.eslintrc.cjs`の`extends`に`'prettier'`が含まれているか確認
+- `eslint-config-prettier`がインストールされているか確認

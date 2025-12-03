@@ -16,19 +16,47 @@ export class ApiQuoteRepository implements QuoteRepository {
 
   private async request<T>(
     endpoint: string,
-    options?: { method?: string; body?: any }
+    options?: { method?: string; body?: unknown }
   ): Promise<T> {
+    const method = options?.method || 'GET'
+    const url = `${this.baseUrl}${endpoint}`
+
     try {
-      const url = `${this.baseUrl}${endpoint}`
+      console.debug(
+        `[ApiQuoteRepository] ${method} ${url}`,
+        options?.body ? { body: options.body } : ''
+      )
       const response = await $fetch<T>(url, {
-        method: options?.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | 'TRACE' | 'CONNECT' | undefined || 'GET',
+        method:
+          (method as
+            | 'GET'
+            | 'POST'
+            | 'PUT'
+            | 'DELETE'
+            | 'PATCH'
+            | 'HEAD'
+            | 'OPTIONS'
+            | 'TRACE'
+            | 'CONNECT'
+            | undefined) || 'GET',
         body: options?.body,
       })
+      console.debug(`[ApiQuoteRepository] ${method} ${url} - Success`)
       return response as T
-    } catch (error: any) {
+    } catch (error: unknown) {
       // エラーレスポンスを適切に処理
-      const message =
-        error?.data?.message || error?.message || 'API request failed'
+      const errorObj = error as {
+        data?: { message?: string }
+        message?: string
+        statusCode?: number
+        status?: number
+      }
+      const message = errorObj?.data?.message || errorObj?.message || 'API request failed'
+      console.error(`[ApiQuoteRepository] ${method} ${url} - Failed:`, {
+        message,
+        statusCode: errorObj?.statusCode || errorObj?.status,
+        error,
+      })
       throw new RepositoryError(message, error)
     }
   }
@@ -44,9 +72,10 @@ export class ApiQuoteRepository implements QuoteRepository {
       return await this.request<Quote>(`/quotes/${id}`, {
         method: 'GET',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 404の場合はnullを返す
-      if (error?.statusCode === 404 || error?.status === 404) {
+      const errorObj = error as { statusCode?: number; status?: number }
+      if (errorObj?.statusCode === 404 || errorObj?.status === 404) {
         return null
       }
       throw error
@@ -76,4 +105,3 @@ export class ApiQuoteRepository implements QuoteRepository {
     })
   }
 }
-

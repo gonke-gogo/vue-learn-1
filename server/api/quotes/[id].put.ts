@@ -13,10 +13,10 @@ export default defineEventHandler(async (event): Promise<Quote> => {
       message: 'ID is required',
     })
   }
-  
+
   const body = await readBody<Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>>(event)
   const supabase = await createSupabaseClient()
-  
+
   // authorIdが指定されている場合、著者名も取得する
   let authorName = body.author || null
   if (body.authorId !== undefined && body.authorId) {
@@ -25,18 +25,24 @@ export default defineEventHandler(async (event): Promise<Quote> => {
       .select('id, name')
       .eq('id', body.authorId)
       .single()
-    
+
     if (!authorError && author) {
       // authorIdが存在する場合、著者名を取得して設定
       authorName = author.name
     }
   }
-  
+
   // アプリの形式（authorId）をSupabaseの形式（author_id）に変換
-  const updateData: any = {
+  const updateData: {
+    updated_at: string
+    text?: string
+    author_id?: string | null
+    author?: string | null
+    tags?: string[] | null
+  } = {
     updated_at: new Date().toISOString(),
   }
-  
+
   if (body.text !== undefined) {
     updateData.text = body.text
   }
@@ -51,7 +57,7 @@ export default defineEventHandler(async (event): Promise<Quote> => {
   if (body.tags !== undefined) {
     updateData.tags = body.tags || []
   }
-  
+
   // Supabaseでデータを更新
   const { data, error } = await supabase
     .from('quotes')
@@ -59,7 +65,7 @@ export default defineEventHandler(async (event): Promise<Quote> => {
     .eq('id', id)
     .select()
     .single()
-  
+
   if (error) {
     if (error.code === 'PGRST116') {
       // データが見つからない場合
@@ -73,14 +79,14 @@ export default defineEventHandler(async (event): Promise<Quote> => {
       message: `Failed to update quote: ${error.message}`,
     })
   }
-  
+
   if (!data) {
     throw createError({
       statusCode: 404,
       message: 'Quote not found',
     })
   }
-  
+
   // Supabaseの形式をアプリの形式に変換
   return {
     id: data.id,
@@ -92,4 +98,3 @@ export default defineEventHandler(async (event): Promise<Quote> => {
     updatedAt: data.updated_at,
   }
 })
-

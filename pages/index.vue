@@ -31,7 +31,7 @@
       </div>
 
       <div class="actions">
-        <button @click="pickNext" class="button">次の候補</button>
+        <button class="button" @click="pickNext">次の候補</button>
         <NuxtLink to="/quotes" class="button buttonSecondary">新規追加</NuxtLink>
         <NuxtLink
           v-if="selectedQuote"
@@ -140,7 +140,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-@import '@/assets/styles/base';
+@use '@/assets/styles/variables' as *;
 .page {
   max-width: 800px;
   margin: 0 auto;
