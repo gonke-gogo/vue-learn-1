@@ -39,7 +39,7 @@ export class ApiQuoteRepository implements QuoteRepository {
             | 'TRACE'
             | 'CONNECT'
             | undefined) || 'GET',
-        body: options?.body,
+        body: options?.body as Record<string, any> | BodyInit | null | undefined,
       })
       console.debug(`[ApiQuoteRepository] ${method} ${url} - Success`)
       return response as T
