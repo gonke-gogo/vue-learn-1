@@ -4,8 +4,6 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 export default defineNuxtConfig({
   compatibilityDate: '2024-01-01',
   devtools: { enabled: true },
-  // 開発環境でのみSSRを無効化（環境変数で制御）
-  // NODE_ENV=development かつ NUXT_DISABLE_SSR=true の場合、SSRを無効化
   ssr: process.env.NUXT_DISABLE_SSR !== 'true',
   modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss'],
   // Tailwind CSSの設定を最適化
@@ -18,6 +16,14 @@ export default defineNuxtConfig({
     typeCheck: false,
   },
   css: ['~/assets/styles/base.scss'],
+  // SSRのパフォーマンス最適化とFOUC防止
+  app: {
+    head: {
+      htmlAttrs: {
+        lang: 'ja',
+      },
+    },
+  },
   runtimeConfig: {
     public: {
       useApi: process.env.NUXT_PUBLIC_USE_API === 'true',
@@ -30,6 +36,8 @@ export default defineNuxtConfig({
       modules: {
         localsConvention: 'camelCase',
       },
+      // CSSの最適化
+      devSourcemap: false, // 開発モードでのソースマップを無効化（パフォーマンス向上）
     },
   },
   nitro: {
@@ -39,6 +47,17 @@ export default defineNuxtConfig({
     externals: {
       inline: [],
     },
+    // SSRのタイムアウト設定（30秒）
+    routeRules: {
+      '/**': {
+        ssr: true,
+        headers: {
+          'Cache-Control': 's-maxage=60',
+        },
+      },
+    },
+    // リクエストのタイムアウト設定
+    timing: true,
   },
   build: {
     transpile: [],

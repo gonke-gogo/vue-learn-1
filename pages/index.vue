@@ -53,6 +53,7 @@ import type { Quote } from '@/types/quote'
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+
 const { quotes, getAuthorName } = useQuotes()
 const store = useQuotesStore()
 
