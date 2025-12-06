@@ -52,7 +52,7 @@ const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 
 const { quotes, isLoading, error } = useQuotes()
-const { authors, getAuthor } = useAuthors()
+const { getAuthor } = useAuthors()
 const quotesStore = useQuotesStore()
 const authorsStore = useAuthorsStore()
 
@@ -81,11 +81,19 @@ function navigateToQuote(id: string) {
 // サーバーサイドで既にデータを取得済みのため、onMountedは不要
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/styles/variables' as *;
 .page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .page {
+    padding: 2rem;
+  }
 }
 
 .header {
@@ -106,8 +114,15 @@ function navigateToQuote(id: string) {
 }
 
 h1 {
-  font-size: 2rem;
+  font-size: 1.5rem;
   margin-bottom: 0.5rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  h1 {
+    font-size: 2rem;
+  }
 }
 
 .count {
@@ -145,6 +160,16 @@ h1 {
   font-weight: 500;
   text-decoration: none;
   transition: background-color 0.2s ease;
+  width: 100%;
+  text-align: center;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .button {
+    width: auto;
+    text-align: left;
+  }
 }
 
 .button:hover {
@@ -163,10 +188,18 @@ h1 {
   border-radius: 0.5rem;
   padding: 1.5rem;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 1rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .quoteItem {
+    flex-direction: row;
+    justify-content: space-between;
+  }
 }
 
 .quoteItem:hover {
@@ -178,9 +211,16 @@ h1 {
 }
 
 .quoteText {
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.8;
   margin-bottom: 0.5rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .quoteText {
+    font-size: 1.125rem;
+  }
 }
 
 .tags {
@@ -205,7 +245,7 @@ h1 {
 
 .quoteActions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0.5rem;
 }
 
@@ -218,6 +258,18 @@ h1 {
   text-decoration: none;
   text-align: center;
   transition: background-color 0.2s ease;
+  flex: 1;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .quoteActions {
+    flex-direction: column;
+  }
+
+  .buttonSmall {
+    flex: none;
+  }
 }
 
 .buttonSmall:hover {

@@ -4,7 +4,7 @@
       <h1>名言一覧</h1>
       <div class="headerActions">
         <NuxtLink to="/authors" class="button buttonSecondary">著者一覧</NuxtLink>
-        <button @click="showAddForm = true" class="button">新規追加</button>
+        <button class="button" @click="showAddForm = true">新規追加</button>
       </div>
     </div>
 
@@ -22,7 +22,7 @@
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="quotes.length === 0" class="emptyState">
       <p>名言が登録されていません</p>
-      <button @click="showAddForm = true" class="button">最初の名言を追加</button>
+      <button class="button" @click="showAddForm = true">最初の名言を追加</button>
     </div>
     <div v-else class="quotesList">
       <div v-for="quote in quotes" :key="quote.id">
@@ -56,8 +56,8 @@
           </div>
           <div class="quoteActions">
             <NuxtLink :to="`/quotes/${quote.id}`" class="buttonSmall" @click.stop> 詳細 </NuxtLink>
-            <button @click.stop="startEdit(quote as Quote)" class="buttonSmall">編集</button>
-            <button @click.stop="handleDelete(quote.id)" class="buttonSmall buttonDanger">
+            <button class="buttonSmall" @click.stop="startEdit(quote as Quote)">編集</button>
+            <button class="buttonSmall buttonDanger" @click.stop="handleDelete(quote.id)">
               削除
             </button>
           </div>
@@ -248,26 +248,50 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/styles/variables' as *;
 .page {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 1rem;
 }
 
 .header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
 .headerActions {
   display: flex;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
 }
 
 h1 {
-  font-size: 2rem;
+  font-size: 1.5rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0;
+  }
+
+  .headerActions {
+    flex-direction: row;
+    gap: 1rem;
+    width: auto;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
 }
 
 h2 {
@@ -284,6 +308,16 @@ h2 {
   font-weight: 500;
   transition: background-color 0.2s ease;
   cursor: pointer;
+  width: 100%;
+  text-align: center;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .button {
+    width: auto;
+    text-align: left;
+  }
 }
 
 .button:hover {
@@ -308,6 +342,16 @@ h2 {
 .buttonSmall {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
+  flex: 1;
+  text-align: center;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .buttonSmall {
+    flex: none;
+    text-align: left;
+  }
 }
 
 .buttonDanger {
@@ -351,8 +395,16 @@ h2 {
   border-radius: 0.5rem;
   padding: 1.5rem;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 1rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .quoteItem {
+    flex-direction: row;
+    justify-content: space-between;
+  }
 }
 
 .quoteContent {
@@ -360,9 +412,16 @@ h2 {
 }
 
 .quoteText {
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1.8;
   margin-bottom: 0.5rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .quoteText {
+    font-size: 1.125rem;
+  }
 }
 
 .quoteAuthor {
@@ -394,8 +453,17 @@ h2 {
 
 .quoteActions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .quoteActions {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
 }
 
 .quoteActions a {

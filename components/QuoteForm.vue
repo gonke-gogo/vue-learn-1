@@ -1,26 +1,32 @@
 <template>
-  <div class="formCard" :[formModeAttr]="isEditMode ? 'edit' : 'create'">
-    <h2>{{ isEditMode ? '編集' : '新規追加' }}</h2>
-    <form @submit.prevent="handleSubmit" :[formActionAttr]="isEditMode ? 'update' : 'create'">
-      <div class="formGroup">
-        <label for="text">名言 *</label>
+  <!-- Tailwind CSSのユーティリティクラスと既存のSCSSスタイルを組み合わせ -->
+  <!-- 参考: Tailwind CSS公式ドキュメント (https://tailwindcss.com/docs) のユーティリティクラスを組み合わせて実装 -->
+  <!-- 使用しているユーティリティクラス: rounded-md, shadow-sm, focus:ring-2, flex, gap, padding, transition-colors など -->
+  <div class="formCard shadow-sm" :[formModeAttr]="isEditMode ? 'edit' : 'create'">
+    <h2 class="formTitle text-xl md:text-2xl font-semibold">
+      {{ isEditMode ? '編集' : '新規追加' }}
+    </h2>
+    <form :[formActionAttr]="isEditMode ? 'update' : 'create'" @submit.prevent="handleSubmit">
+      <!-- Tailwindのレイアウトクラスを使用 -->
+      <div class="formGroup mb-6">
+        <label for="text" class="formLabel block text-sm font-medium mb-2">名言 *</label>
         <textarea
           id="text"
           :value="modelValue.text"
-          @input="updateText"
           required
           rows="3"
-          class="input"
+          class="input block w-full rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0"
           placeholder="名言を入力してください"
+          @input="updateText"
         />
       </div>
-      <div class="formGroup">
-        <label for="authorId">著者</label>
+      <div class="formGroup mb-6">
+        <label for="authorId" class="formLabel block text-sm font-medium mb-2">著者</label>
         <select
           id="authorId"
           :value="modelValue.authorId || ''"
+          class="input block w-full rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0"
           @change="updateAuthorId"
-          class="input"
         >
           <option value="">著者を選択（任意）</option>
           <option v-for="author in authors" :key="author.id" :value="author.id">
@@ -28,22 +34,33 @@
           </option>
         </select>
       </div>
-      <div class="formGroup">
-        <label for="tags">タグ（カンマ区切り）</label>
+      <div class="formGroup mb-6">
+        <label for="tags" class="formLabel block text-sm font-medium mb-2"
+          >タグ（カンマ区切り）</label
+        >
         <input
           id="tags"
           :value="tagsInput"
-          @input="updateTagsInput"
           type="text"
-          class="input"
+          class="input block w-full rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0"
           placeholder="例: 成功, 挑戦, 努力"
+          @input="updateTagsInput"
         />
       </div>
-      <div class="formActions">
-        <button type="submit" class="button" :disabled="isLoading">
+      <!-- TailwindのFlexboxクラスを使用 -->
+      <div class="formActions flex flex-col md:flex-row gap-3 md:gap-4">
+        <button
+          type="submit"
+          class="button bg-pink-500 inline-flex justify-center items-center px-8 py-3.5 border-transparent text-base font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
+          :disabled="isLoading"
+        >
           {{ isEditMode ? '更新' : '追加' }}
         </button>
-        <button type="button" @click="handleCancel" class="button buttonSecondary">
+        <button
+          type="button"
+          class="button buttonSecondary inline-flex justify-center items-center px-8 py-3.5 text-base font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
+          @click="handleCancel"
+        >
           キャンセル
         </button>
       </div>
@@ -53,7 +70,6 @@
 
 <script setup lang="ts">
 import { watch } from 'vue'
-import type { Quote } from '@/types/quote'
 import { useAuthors } from '@/composables/useAuthors'
 
 // Props定義
@@ -192,11 +208,11 @@ onMounted(async () => {
   // DOM要素を取得してdata-form-mode属性を読み取る
   const formCardElement = document.querySelector('.formCard') as HTMLElement
   if (formCardElement) {
-    const formMode = formCardElement.getAttribute('data-form-mode')
+    const _formMode = formCardElement.getAttribute('data-form-mode')
     // 属性に基づいて処理を分岐することも可能
-    // if (formMode === 'edit') {
+    // if (_formMode === 'edit') {
     //   // 編集モード特有の処理
-    // } else if (formMode === 'create') {
+    // } else if (_formMode === 'create') {
     //   // 新規作成モード特有の処理
     // }
   }
@@ -204,24 +220,33 @@ onMounted(async () => {
   // data-form-action属性を読み取る例
   const formElement = document.querySelector('form') as HTMLFormElement
   if (formElement) {
-    const formAction = formElement.getAttribute('data-form-action')
+    const _formAction = formElement.getAttribute('data-form-action')
     // 属性に基づいて処理を分岐することも可能
-    // if (formAction === 'update') {
+    // if (_formAction === 'update') {
     //   // 更新処理特有の設定
-    // } else if (formAction === 'create') {
+    // } else if (_formAction === 'create') {
     //   // 作成処理特有の設定
     // }
   }
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/styles/variables' as *;
+
 .formCard {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  padding: 2rem;
+  padding: 1.5rem;
   margin-bottom: 2rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .formCard {
+    padding: 2rem;
+  }
 }
 
 /* data-form-mode属性を使った条件付きスタイリングの例 */
@@ -246,61 +271,59 @@ form[data-form-action='create'] {
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2); /* 緑系の影 */
 }
 
-h2 {
-  font-size: 1.5rem;
+.formTitle {
   margin-bottom: 1.5rem;
+  color: var(--color-text);
 }
 
 .formGroup {
   margin-bottom: 1.5rem;
 }
 
-.formGroup label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
+.formLabel {
+  color: var(--color-text);
 }
 
 .input {
-  width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: 0.25rem;
   background-color: var(--color-bg);
   color: var(--color-text);
   font-size: 1rem;
   font-family: inherit;
-}
 
-.input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
-.formActions {
-  display: flex;
-  gap: 1rem;
+  &:focus {
+    border-color: var(--color-primary);
+    // TailwindのringカラーをCSS変数で設定
+    --tw-ring-color: var(--color-primary);
+  }
 }
 
 .button {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  background-color: var(--color-primary);
+  /* background-colorはTailwindクラス（bg-pink-500）で指定 */
   color: white;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
   cursor: pointer;
   border: none;
-}
+  width: 100%;
+  padding: 0.7rem 1.5rem;
 
-.button:hover {
-  background-color: var(--color-primary-hover);
-}
+  /* タブレット以上 */
+  @media (min-width: $breakpoint-tablet) {
+    width: auto;
+  }
 
-.button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  &:hover {
+    background-color: var(--color-primary-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &:focus {
+    --tw-ring-color: var(--color-primary);
+  }
 }
 
 .buttonSecondary {

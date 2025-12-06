@@ -125,22 +125,41 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/styles/variables' as *;
 .page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 .header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
 h1 {
-  font-size: 2rem;
+  font-size: 1.5rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .page {
+    padding: 2rem;
+  }
+
+  .header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
 }
 
 .button {
@@ -152,6 +171,16 @@ h1 {
   font-weight: 500;
   text-decoration: none;
   transition: background-color 0.2s ease;
+  width: 100%;
+  text-align: center;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .button {
+    width: auto;
+    text-align: left;
+  }
 }
 
 .button:hover {
@@ -181,8 +210,16 @@ h1 {
 
 .authorsList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .authorsList {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
 }
 
 .authorItem {
@@ -191,13 +228,21 @@ h1 {
   border-radius: 0.5rem;
   padding: 1.5rem;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   gap: 1rem;
   cursor: pointer;
   transition:
     background-color 0.2s ease,
     transform 0.2s ease;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .authorItem {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .authorItem:hover {
@@ -210,9 +255,16 @@ h1 {
 }
 
 .authorName {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   margin-bottom: 0.5rem;
   color: var(--color-text);
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .authorName {
+    font-size: 1.25rem;
+  }
 }
 
 .authorCount {
@@ -223,6 +275,7 @@ h1 {
 .authorActions {
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .buttonSmall {
@@ -233,6 +286,20 @@ h1 {
   border-radius: 0.5rem;
   text-decoration: none;
   transition: background-color 0.2s ease;
+  width: 100%;
+  text-align: center;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .authorActions {
+    width: auto;
+  }
+
+  .buttonSmall {
+    width: auto;
+    text-align: left;
+  }
 }
 
 .buttonSmall:hover {

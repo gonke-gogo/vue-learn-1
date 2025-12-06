@@ -16,7 +16,7 @@ export class ApiAuthorRepository implements AuthorRepository {
 
   private async request<T>(
     endpoint: string,
-    options?: { method?: string; body?: any }
+    options?: { method?: string; body?: unknown }
   ): Promise<T> {
     try {
       const url = `${this.baseUrl}${endpoint}`
@@ -25,10 +25,10 @@ export class ApiAuthorRepository implements AuthorRepository {
         body: options?.body,
       })
       return response
-    } catch (error: any) {
+    } catch (error: unknown) {
       // エラーレスポンスを適切に処理
-      const message =
-        error?.data?.message || error?.message || 'API request failed'
+      const errorObj = error as { data?: { message?: string }; message?: string }
+      const message = errorObj?.data?.message || errorObj?.message || 'API request failed'
       throw new RepositoryError(message, error)
     }
   }
@@ -44,9 +44,10 @@ export class ApiAuthorRepository implements AuthorRepository {
       return await this.request<Author>(`/authors/${id}`, {
         method: 'GET',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 404の場合はnullを返す
-      if (error?.statusCode === 404 || error?.status === 404) {
+      const errorObj = error as { statusCode?: number; status?: number }
+      if (errorObj?.statusCode === 404 || errorObj?.status === 404) {
         return null
       }
       throw error
@@ -83,4 +84,3 @@ export class ApiAuthorRepository implements AuthorRepository {
     })
   }
 }
-

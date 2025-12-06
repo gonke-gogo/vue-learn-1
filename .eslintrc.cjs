@@ -3,23 +3,80 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
-    node: true
+    node: true,
   },
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:vue/vue3-recommended',
-    'prettier'
+    'prettier',
   ],
   parser: 'vue-eslint-parser',
   parserOptions: {
     ecmaVersion: 'latest',
     parser: '@typescript-eslint/parser',
-    sourceType: 'module'
+    sourceType: 'module',
   },
   plugins: ['@typescript-eslint'],
+  globals: {
+    // Vue 3 Composition API
+    ref: 'readonly',
+    reactive: 'readonly',
+    computed: 'readonly',
+    watch: 'readonly',
+    watchEffect: 'readonly',
+    onMounted: 'readonly',
+    onUpdated: 'readonly',
+    onUnmounted: 'readonly',
+    onBeforeMount: 'readonly',
+    onBeforeUpdate: 'readonly',
+    onBeforeUnmount: 'readonly',
+    provide: 'readonly',
+    inject: 'readonly',
+    defineProps: 'readonly',
+    defineEmits: 'readonly',
+    defineExpose: 'readonly',
+    withDefaults: 'readonly',
+    // Nuxt 3 Auto-imports
+    useRoute: 'readonly',
+    useRouter: 'readonly',
+    useFetch: 'readonly',
+    useLazyFetch: 'readonly',
+    useAsyncData: 'readonly',
+    useLazyAsyncData: 'readonly',
+    navigateTo: 'readonly',
+    abortNavigation: 'readonly',
+    addRouteMiddleware: 'readonly',
+    useCookie: 'readonly',
+    useRequestHeaders: 'readonly',
+    useRequestEvent: 'readonly',
+    useRequestURL: 'readonly',
+    useRuntimeConfig: 'readonly',
+    useState: 'readonly',
+    clearNuxtData: 'readonly',
+    refreshCookie: 'readonly',
+    setResponseStatus: 'readonly',
+    // Nuxt 3 Utilities
+    $fetch: 'readonly',
+    // Nuxt 3 Components
+    NuxtLink: 'readonly',
+    NuxtPage: 'readonly',
+    NuxtLayout: 'readonly',
+    NuxtErrorBoundary: 'readonly',
+    // Nuxt 3 Composables
+    useHead: 'readonly',
+    useSeoMeta: 'readonly',
+    useSchemaOrg: 'readonly',
+  },
   rules: {
-    'vue/multi-word-component-names': 'off'
-  }
+    'vue/multi-word-component-names': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      },
+    ],
+  },
 }
-

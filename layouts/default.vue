@@ -8,7 +8,7 @@
             <NuxtLink to="/">今日の名言</NuxtLink>
             <NuxtLink to="/quotes">名言一覧</NuxtLink>
           </div>
-          <button class="themeToggle" @click="toggleTheme" aria-label="テーマ切替">
+          <button class="themeToggle" aria-label="テーマ切替" @click="toggleTheme">
             {{ isDark ? '☀️' : '🌙' }}
           </button>
         </nav>
@@ -39,7 +39,8 @@ const isDark = useDark({
 const toggleTheme = useToggle(isDark)
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/styles/variables' as *;
 .layout {
   min-height: 100vh;
   display: flex;
@@ -61,25 +62,29 @@ const toggleTheme = useToggle(isDark)
 
 .nav {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .logo {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: bold;
   color: var(--color-primary);
 }
 
 .navLinks {
   display: flex;
-  gap: 1.5rem;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .navLinks a {
   color: var(--color-text);
   font-weight: 500;
   transition: color 0.2s ease;
+  padding: 0.5rem 0;
 }
 
 .navLinks a:hover,
@@ -92,6 +97,8 @@ const toggleTheme = useToggle(isDark)
   padding: 0.5rem;
   border-radius: 0.5rem;
   transition: background-color 0.2s ease;
+  align-self: flex-end;
+  margin-top: -3rem;
 }
 
 .themeToggle:hover {
@@ -100,16 +107,52 @@ const toggleTheme = useToggle(isDark)
 
 .main {
   flex: 1;
-  padding: 2rem 0;
+  padding: 1.5rem 0;
 }
 
 .footer {
   background-color: var(--color-surface);
   border-top: 1px solid var(--color-border);
-  padding: 1.5rem 0;
+  padding: 1rem 0;
   text-align: center;
   color: var(--color-text-secondary);
   font-size: 0.875rem;
 }
-</style>
 
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .nav {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
+  }
+
+  .logo {
+    font-size: 1.5rem;
+  }
+
+  .navLinks {
+    flex-direction: row;
+    gap: 1.5rem;
+    width: auto;
+  }
+
+  .navLinks a {
+    padding: 0;
+  }
+
+  .themeToggle {
+    align-self: auto;
+    margin-top: 0;
+  }
+
+  .main {
+    padding: 2rem 0;
+  }
+
+  .footer {
+    padding: 1.5rem 0;
+  }
+}
+</style>

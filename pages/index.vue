@@ -31,7 +31,7 @@
       </div>
 
       <div class="actions">
-        <button @click="pickNext" class="button">次の候補</button>
+        <button class="button" @click="pickNext">次の候補</button>
         <NuxtLink to="/quotes" class="button buttonSecondary">新規追加</NuxtLink>
         <NuxtLink
           v-if="selectedQuote"
@@ -53,6 +53,7 @@ import type { Quote } from '@/types/quote'
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+
 const { quotes, getAuthorName } = useQuotes()
 const store = useQuotesStore()
 
@@ -139,22 +140,42 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/assets/styles/variables' as *;
 .page {
   max-width: 800px;
   margin: 0 auto;
+  padding: 0 1rem;
 }
 
 h1 {
-  font-size: 2rem;
-  margin-bottom: 2rem;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+  }
 }
 
 .moodSelector {
   margin-bottom: 2rem;
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .moodSelector {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
 }
 
 .moodSelector label {
@@ -174,14 +195,28 @@ h1 {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  padding: 2rem;
+  padding: 1.5rem;
   margin-bottom: 2rem;
 }
 
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .quoteCard {
+    padding: 2rem;
+  }
+}
+
 .quoteText {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   line-height: 1.8;
   margin-bottom: 1rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .quoteText {
+    font-size: 1.25rem;
+  }
 }
 
 .quoteAuthor {
@@ -208,8 +243,17 @@ h1 {
 
 .actions {
   display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .actions {
+    flex-direction: row;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
 }
 
 .button {
@@ -220,6 +264,16 @@ h1 {
   border-radius: 0.5rem;
   font-weight: 500;
   transition: background-color 0.2s ease;
+  width: 100%;
+  text-align: center;
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .button {
+    width: auto;
+    text-align: left;
+  }
 }
 
 .button:hover {
