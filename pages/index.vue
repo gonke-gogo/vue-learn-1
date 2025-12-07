@@ -1,7 +1,6 @@
 <template>
   <div class="page">
     <h1>今日の名言（気分ぶちあげるぜ）</h1>
-
     <div v-if="quotes.length === 0" class="emptyState">
       <p>名言が登録されていません</p>
       <NuxtLink to="/quotes" class="button">名言を追加する</NuxtLink>
@@ -46,6 +45,9 @@
 </template>
 
 <script setup lang="ts">
+import { getActivePinia } from 'pinia'
+import type { ComputedRef } from 'vue'
+import { nextTick } from 'vue'
 import { useQuotes } from '@/composables/useQuotes'
 import { useQuotesStore } from '@/stores/quotes'
 import { useSeededRandom } from '@/composables/useSeededRandom'
@@ -54,12 +56,49 @@ import type { Quote } from '@/types/quote'
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 
-const { quotes, getAuthorName } = useQuotes()
-const store = useQuotesStore()
+// PiniaストアとuseQuotes()の参照（クライアントサイドでのみ初期化）
+const store = ref<ReturnType<typeof useQuotesStore> | null>(null)
+const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
 
-// サーバーサイドで取得したデータをストアに反映
-if (fetchedQuotes.value) {
-  store.quotes = fetchedQuotes.value
+// サーバーサイドで取得したデータを一時的に保持
+const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
+
+// quotesをrefとして定義（初期値はuseFetchで取得したデータ）
+// SSRとクライアントサイドで一貫性を保つため、確実にデータを設定
+const quotes = ref<Quote[]>(fetchedQuotes.value ? ([...fetchedQuotes.value] as Quote[]) : [])
+
+// fetchedQuotesが変更されたらquotesを更新
+// pickQuote()は後で定義されるため、ここでは呼び出さない
+watch(
+  fetchedQuotes,
+  (newQuotes) => {
+    if (newQuotes && newQuotes.length > 0) {
+      console.log('[pages/index] fetchedQuotes changed, updating quotes:', newQuotes.length)
+      quotes.value = [...newQuotes] as Quote[]
+      initialQuotes.value = [...newQuotes] as Quote[]
+    }
+  },
+  { immediate: true }
+)
+
+// デバッグ: quotesの初期値を確認
+console.log('[pages/index] Initial quotes length:', quotes.value.length)
+console.log('[pages/index] Initial fetchedQuotes:', fetchedQuotes.value?.length || 0)
+console.log('[pages/index] fetchedQuotes.value:', fetchedQuotes.value)
+
+const getAuthorName = (quote: Quote) => {
+  // Piniaが初期化されていることを確認
+  const pinia = getActivePinia()
+  if (!pinia || !quotesComposable.value) {
+    return quote.author
+  }
+
+  try {
+    return quotesComposable.value.getAuthorName(quote)
+  } catch (error) {
+    console.warn('[pages/index] Error in getAuthorName:', error)
+    return quote.author
+  }
 }
 
 const mood = ref(3)
@@ -120,14 +159,183 @@ function handleVisibilityChange() {
   }
 }
 
-watch([mood, quotes], () => {
-  salt.value = 0
-  pickQuote()
-})
+onMounted(async () => {
+  // nextTickでPiniaが初期化されるまで待つ
+  await nextTick()
 
-onMounted(() => {
+  // Piniaが初期化されるまで待つ
+  let pinia = getActivePinia()
+  if (!pinia) {
+    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      pinia = getActivePinia()
+      if (pinia) break
+    }
+  }
+
+  // useFetchで取得したデータを確認
+  console.log('[pages/index] initialQuotes:', initialQuotes.value.length)
+
+  if (!pinia) {
+    console.warn('[pages/index] Pinia is not initialized, using initialQuotes')
+    // Piniaが初期化されていない場合でも、initialQuotesを使用してquotesを更新
+    if (initialQuotes.value.length > 0) {
+      quotes.value = initialQuotes.value as Quote[]
+    }
+    // quotesにデータがある場合はpickQuote()を呼び出す
+    await nextTick()
+    if (quotes.value.length > 0) {
+      console.log(
+        '[pages/index] Calling pickQuote() without Pinia, quotes.length:',
+        quotes.value.length
+      )
+      pickQuote()
+    }
+    return
+  }
+
+  try {
+    // Piniaが初期化された後にストアとuseQuotes()を呼び出す
+    store.value = useQuotesStore()
+    quotesComposable.value = useQuotes()
+  } catch (error) {
+    console.error('[pages/index] Error initializing stores:', error)
+    // エラーが発生した場合でも、initialQuotesを使用してquotesを更新
+    if (initialQuotes.value.length > 0) {
+      quotes.value = initialQuotes.value as Quote[]
+    }
+    // quotesにデータがある場合はpickQuote()を呼び出す
+    await nextTick()
+    if (quotes.value.length > 0) {
+      console.log(
+        '[pages/index] Calling pickQuote() after error, quotes.length:',
+        quotes.value.length
+      )
+      pickQuote()
+    }
+    return
+  }
+
+  console.log('[pages/index] store.quotes:', store.value.quotes.length)
+
+  // useFetchで取得したデータがストアにない場合、ストアから読み込む
+  // （persistedstateで既にデータが復元されている可能性があるため）
+  if (store.value.quotes.length === 0) {
+    // ストアにデータがない場合、loadQuotes()を呼び出す
+    console.log('[pages/index] Loading quotes from API...')
+    await store.value.loadQuotes()
+    console.log('[pages/index] Loaded quotes:', store.value.quotes.length)
+  }
+
+  // quotesをcomputedに設定（Piniaが初期化された後）
+  const quotesComputed = computed(() => {
+    let result: any[] = []
+
+    if (quotesComposable.value) {
+      try {
+        const quotesRef = quotesComposable.value.quotes as unknown as ComputedRef<readonly Quote[]>
+        result = quotesRef.value as any[]
+      } catch (error) {
+        console.warn('[pages/index] Error accessing quotesComposable.value.quotes:', error)
+        result = initialQuotes.value as any[]
+      }
+    } else if (store.value) {
+      result = store.value.quotes as any[]
+    } else {
+      result = initialQuotes.value as any[]
+    }
+
+    // 結果が空配列の場合、initialQuotesを使用
+    if (result.length === 0 && initialQuotes.value.length > 0) {
+      console.log('[pages/index] quotesComputed returned empty, using initialQuotes')
+      return initialQuotes.value as any[]
+    }
+
+    return result as any[]
+  })
+
+  // quotesComputedの値をwatchしてquotesを更新
+  // immediate: falseにして、DOM操作エラーを防ぐ
+  watch(
+    quotesComputed,
+    (newQuotes) => {
+      console.log('[pages/index] quotesComputed changed, new length:', newQuotes.length)
+      if (newQuotes.length > 0) {
+        // 新しい配列を作成して型を変換
+        const newQuotesArray = newQuotes.map((q) => ({
+          ...q,
+          tags: q.tags ? [...q.tags] : undefined,
+        })) as Quote[]
+        quotes.value = newQuotesArray
+      } else if (initialQuotes.value.length > 0 && quotes.value.length === 0) {
+        // 空配列の場合はinitialQuotesを使用（quotesが空の場合のみ）
+        console.log('[pages/index] quotesComputed is empty, using initialQuotes')
+        quotes.value = initialQuotes.value.map((q) => ({
+          ...q,
+          tags: q.tags ? [...q.tags] : undefined,
+        })) as Quote[]
+      }
+    },
+    { immediate: false }
+  )
+
+  // 最初の更新をnextTickで実行（DOMが準備された後）
+  await nextTick()
+  if (initialQuotes.value.length > 0 && quotes.value.length === 0) {
+    quotes.value = initialQuotes.value.map((q) => ({
+      ...q,
+      tags: q.tags ? [...q.tags] : undefined,
+    })) as Quote[]
+    console.log('[pages/index] Set quotes from initialQuotes after nextTick:', quotes.value.length)
+  }
+
+  // watchをonMounted内で設定（Piniaが初期化された後）
+  watch(
+    [mood, quotes],
+    () => {
+      if (quotes.value.length > 0) {
+        salt.value = 0
+        pickQuote()
+      }
+    },
+    { immediate: true }
+  )
+
   // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
-  pickQuote()
+  // fetchedQuotesがある場合は、quotesを更新してからpickQuote()を呼び出す
+  if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
+    quotes.value = [...fetchedQuotes.value] as Quote[]
+    initialQuotes.value = [...fetchedQuotes.value] as Quote[]
+  } else if (initialQuotes.value.length > 0) {
+    // quotesが空でもinitialQuotesがある場合は、quotesを更新
+    quotes.value = initialQuotes.value
+  }
+
+  // quotesにデータがあることを確認してからpickQuote()を呼び出す
+  // nextTickで待ってから実行（quotesの更新が反映された後）
+  await nextTick()
+
+  // quotesが更新されたことを確認してからpickQuote()を呼び出す
+  if (quotes.value.length > 0) {
+    console.log('[pages/index] Calling pickQuote() with quotes.length:', quotes.value.length)
+    pickQuote()
+    console.log(
+      '[pages/index] selectedQuote after pickQuote():',
+      selectedQuote.value?.text?.substring(0, 50)
+    )
+  } else {
+    // quotesが空の場合、もう一度nextTickで待つ
+    await nextTick()
+    if (quotes.value.length > 0) {
+      console.log(
+        '[pages/index] Calling pickQuote() after second nextTick, quotes.length:',
+        quotes.value.length
+      )
+      pickQuote()
+    }
+  }
+
   // 可視状態に応じて自動切替を開始/停止
   document.addEventListener('visibilitychange', handleVisibilityChange)
   if (!document.hidden) startAutoRotate()

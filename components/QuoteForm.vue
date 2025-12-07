@@ -69,8 +69,11 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { getActivePinia } from 'pinia'
+import type { ComputedRef } from 'vue'
+import { nextTick, watch } from 'vue'
 import { useAuthors } from '@/composables/useAuthors'
+import type { Author } from '@/types/author'
 
 // Props定義
 interface Props {
@@ -83,12 +86,14 @@ interface Props {
   isLoading?: boolean
 }
 
-const { authors, loadAuthors } = useAuthors()
-
 const props = withDefaults(defineProps<Props>(), {
   isEditMode: false,
   isLoading: false,
 })
+
+// authorsとloadAuthorsをrefとして定義（onMounted内で初期化）
+const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
+const authors = ref<Author[]>([])
 
 // Event定義
 const emit = defineEmits<{
@@ -148,6 +153,7 @@ function updateTagsInput(event: Event) {
 
 // サブミットハンドラ（EventEmitterでvalueのみを親に投げる）
 function handleSubmit() {
+  console.log('[QuoteForm] handleSubmit called')
   // バリデーション：テキストが空の場合は送信しない
   const text = props.modelValue.text || ''
   const trimmedText = text.trim()
@@ -158,9 +164,13 @@ function handleSubmit() {
 
   const formValue = {
     text: trimmedText, // 前後の空白を削除
-    authorId: props.modelValue.authorId || undefined,
+    authorId:
+      props.modelValue.authorId && props.modelValue.authorId.trim() !== ''
+        ? props.modelValue.authorId
+        : undefined,
     tags: props.modelValue.tags || [],
   }
+  console.log('[QuoteForm] Emitting submit event with:', formValue)
   emit('submit', formValue)
 }
 
@@ -186,8 +196,8 @@ watch(
       // 著者IDが変更された場合
       if (oldValue.authorId !== newValue.authorId) {
         // 著者IDが変更された場合、著者一覧を再読み込み（必要に応じて）
-        if (newValue.authorId && !oldValue.authorId) {
-          loadAuthors()
+        if (newValue.authorId && !oldValue.authorId && authorsComposable.value) {
+          authorsComposable.value.loadAuthors()
         }
       }
 
@@ -204,7 +214,92 @@ watch(
 
 // data-form-mode属性とdata-form-action属性を使った例：コンポーネントマウント時に属性を読み取る
 onMounted(async () => {
-  await loadAuthors()
+  console.log('[QuoteForm] onMounted called')
+  // Piniaが初期化されるまで待つ
+  await nextTick()
+
+  let pinia = getActivePinia()
+  if (!pinia) {
+    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      pinia = getActivePinia()
+      if (pinia) break
+    }
+  }
+
+  if (pinia) {
+    try {
+      console.log('[QuoteForm] Pinia initialized, using useAuthors()')
+      // Piniaが初期化された後にuseAuthors()を呼び出す
+      authorsComposable.value = useAuthors()
+
+      // authorsをwatchで更新
+      if (authorsComposable.value) {
+        watch(
+          () => {
+            if (!authorsComposable.value) return []
+            const authorsRef = authorsComposable.value.authors as unknown as ComputedRef<
+              readonly Author[]
+            >
+            return authorsRef.value || []
+          },
+          (newAuthors) => {
+            console.log('[QuoteForm] authors watch triggered, newAuthors:', newAuthors?.length)
+            if (newAuthors && Array.isArray(newAuthors)) {
+              authors.value = [...newAuthors] as Author[]
+              console.log('[QuoteForm] authors.value updated:', authors.value.length)
+            }
+          },
+          { immediate: true }
+        )
+
+        // 著者一覧を読み込む
+        console.log('[QuoteForm] Loading authors...')
+        await authorsComposable.value.loadAuthors()
+        console.log('[QuoteForm] loadAuthors completed')
+
+        // loadAuthors後、少し待ってからauthorsを確認して更新
+        await nextTick()
+        await new Promise((resolve) => setTimeout(resolve, 100)) // データが反映されるまで少し待つ
+
+        if (authorsComposable.value) {
+          const authorsRef = authorsComposable.value.authors as unknown as ComputedRef<
+            readonly Author[]
+          >
+          const currentAuthors = authorsRef.value || []
+          console.log('[QuoteForm] currentAuthors after loadAuthors:', currentAuthors.length)
+          if (currentAuthors.length > 0) {
+            authors.value = [...currentAuthors] as Author[]
+            console.log('[QuoteForm] authors.value set after loadAuthors:', authors.value.length)
+          } else {
+            // まだ空の場合は、もう少し待ってから再確認
+            await new Promise((resolve) => setTimeout(resolve, 200))
+            const retryAuthors = authorsRef.value || []
+            if (retryAuthors.length > 0) {
+              authors.value = [...retryAuthors] as Author[]
+              console.log('[QuoteForm] authors.value set after retry:', authors.value.length)
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[QuoteForm] Error initializing authors composable:', err)
+    }
+  } else {
+    console.warn('[QuoteForm] Pinia is not initialized, fetching authors directly from API')
+    // Piniaが初期化されていない場合、APIから直接取得
+    try {
+      const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
+      if (fetchedAuthors.value && fetchedAuthors.value.length > 0) {
+        authors.value = fetchedAuthors.value
+        console.log('[QuoteForm] authors.value set from API:', authors.value.length)
+      }
+    } catch (err) {
+      console.error('[QuoteForm] Error fetching authors from API:', err)
+    }
+  }
+
   // DOM要素を取得してdata-form-mode属性を読み取る
   const formCardElement = document.querySelector('.formCard') as HTMLElement
   if (formCardElement) {
