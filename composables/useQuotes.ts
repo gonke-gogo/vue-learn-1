@@ -24,9 +24,7 @@ export function useQuotes() {
     if (tags.length === 0) {
       return [...store.quotes] as Quote[]
     }
-    return store.quotes.filter((quote) =>
-      tags.some((tag) => quote.tags?.includes(tag))
-    ) as Quote[]
+    return store.quotes.filter((quote) => tags.some((tag) => quote.tags?.includes(tag))) as Quote[]
   }
 
   const sortQuotes = (quotes: Quote[], order: 'asc' | 'desc' = 'desc'): Quote[] => {
@@ -62,4 +60,3 @@ export function useQuotes() {
     getAuthorName,
   }
 }
-

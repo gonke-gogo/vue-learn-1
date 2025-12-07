@@ -68,6 +68,9 @@
 </template>
 
 <script setup lang="ts">
+import { getActivePinia } from 'pinia'
+import type { ComputedRef } from 'vue'
+import { nextTick } from 'vue'
 import { useQuotes } from '@/composables/useQuotes'
 import { useAuthors } from '@/composables/useAuthors'
 import { useQuotesStore } from '@/stores/quotes'
@@ -78,13 +81,73 @@ const route = useRoute()
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
-const { quotes, isLoading, error, addQuote, updateQuote, removeQuote, getAuthorName } = useQuotes()
-const { getOrCreateAuthorByName } = useAuthors()
-const store = useQuotesStore()
 
-// サーバーサイドで取得したデータをストアに反映
-if (fetchedQuotes.value) {
-  store.quotes = fetchedQuotes.value
+// PiniaストアとuseQuotes()の参照（クライアントサイドでのみ初期化）
+const store = ref<ReturnType<typeof useQuotesStore> | null>(null)
+const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
+const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
+
+// サーバーサイドで取得したデータを一時的に保持
+const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
+
+// quotes、isLoading、errorなどをrefとして定義（onMounted内で設定）
+const quotes = ref<Quote[]>(initialQuotes.value)
+const isLoading = ref(false)
+const error = ref<string | null>(null)
+
+// fetchedQuotesが変更されたらquotesを更新
+watch(
+  fetchedQuotes,
+  (newQuotes) => {
+    if (newQuotes && newQuotes.length > 0) {
+      console.log('[pages/quotes/index] fetchedQuotes changed, updating quotes:', newQuotes.length)
+      quotes.value = [...newQuotes] as Quote[]
+      initialQuotes.value = [...newQuotes] as Quote[]
+    }
+  },
+  { immediate: true }
+)
+
+// 関数を定義（onMounted内で更新）
+const getAuthorName = (quote: Quote): string | undefined => {
+  if (quotesComposable.value) {
+    return quotesComposable.value.getAuthorName(quote)
+  }
+  return quote.author
+}
+
+const addQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>) => {
+  if (quotesComposable.value) {
+    return await quotesComposable.value.addQuote(quote)
+  }
+  throw new Error('quotesComposable is not initialized')
+}
+
+const updateQuote = async (
+  id: string,
+  updates: Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>
+) => {
+  if (quotesComposable.value) {
+    return await quotesComposable.value.updateQuote(id, updates)
+  }
+  if (store.value) {
+    return await store.value.updateQuote(id, updates)
+  }
+  throw new Error('quotesComposable and store are not initialized')
+}
+
+const removeQuote = async (id: string) => {
+  if (quotesComposable.value) {
+    return await quotesComposable.value.removeQuote(id)
+  }
+  throw new Error('quotesComposable is not initialized')
+}
+
+const getOrCreateAuthorByName = async (name: string) => {
+  if (authorsComposable.value) {
+    return await authorsComposable.value.getOrCreateAuthorByName(name)
+  }
+  throw new Error('authorsComposable is not initialized')
 }
 
 const showAddForm = ref(false)
@@ -141,29 +204,226 @@ function handleQuoteClick(quote: Quote) {
 
 // EventEmitterで受け取ったフォームの値のみを使用（valueのみを親に投げる要件を満たす）
 async function handleSubmit(formValue: { text: string; authorId?: string; tags?: string[] }) {
+  console.log('[pages/quotes/index] handleSubmit called with:', formValue)
   try {
     if (editingQuote.value) {
-      await updateQuote(editingQuote.value.id, formValue)
+      console.log('[pages/quotes/index] Updating quote:', editingQuote.value.id)
+      // quotesComposableが初期化されていない場合、APIを直接呼び出す
+      if (!quotesComposable.value && !store.value) {
+        console.warn(
+          '[pages/quotes/index] quotesComposable and store are not initialized, using direct API call for update'
+        )
+        // authorIdが空文字列の場合はundefinedに変換
+        const requestBody = {
+          ...formValue,
+          authorId:
+            formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
+        }
+        console.log(
+          '[pages/quotes/index] requestBody being sent for update:',
+          JSON.stringify(requestBody, null, 2)
+        )
+        const { data: updatedQuote } = await useFetch<Quote>(
+          `/api/quotes/${editingQuote.value.id}`,
+          {
+            method: 'PUT',
+            body: requestBody,
+          }
+        )
+        console.log('[pages/quotes/index] updatedQuote received:', updatedQuote.value)
+        if (updatedQuote.value) {
+          // quotesを更新
+          const index = quotes.value.findIndex((q) => q.id === editingQuote.value?.id)
+          if (index !== -1) {
+            quotes.value[index] = updatedQuote.value
+          }
+          const initialIndex = initialQuotes.value.findIndex((q) => q.id === editingQuote.value?.id)
+          if (initialIndex !== -1) {
+            initialQuotes.value[initialIndex] = updatedQuote.value
+          }
+        }
+      } else {
+        // authorIdが空文字列の場合はundefinedに変換
+        const requestBody = {
+          ...formValue,
+          authorId:
+            formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
+        }
+        await updateQuote(editingQuote.value.id, requestBody)
+      }
     } else {
-      await addQuote(formValue)
+      console.log('[pages/quotes/index] Adding new quote')
+      // quotesComposableが初期化されていない場合、APIを直接呼び出す
+      if (!quotesComposable.value && !store.value) {
+        console.warn(
+          '[pages/quotes/index] quotesComposable and store are not initialized, using direct API call'
+        )
+        console.log(
+          '[pages/quotes/index] formValue being sent:',
+          JSON.stringify(formValue, null, 2)
+        )
+        // authorIdが空文字列の場合はundefinedに変換
+        const requestBody = {
+          ...formValue,
+          authorId:
+            formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
+        }
+        console.log(
+          '[pages/quotes/index] requestBody being sent:',
+          JSON.stringify(requestBody, null, 2)
+        )
+        const { data: newQuote } = await useFetch<Quote>('/api/quotes', {
+          method: 'POST',
+          body: requestBody,
+        })
+        console.log('[pages/quotes/index] newQuote received:', newQuote.value)
+        if (newQuote.value) {
+          // quotesに追加
+          quotes.value = [...quotes.value, newQuote.value]
+          initialQuotes.value = [...initialQuotes.value, newQuote.value]
+        }
+      } else {
+        // authorIdが空文字列の場合はundefinedに変換
+        const requestBody = {
+          ...formValue,
+          authorId:
+            formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
+        }
+        console.log(
+          '[pages/quotes/index] requestBody being sent to addQuote:',
+          JSON.stringify(requestBody, null, 2)
+        )
+        await addQuote(requestBody)
+      }
     }
+    console.log('[pages/quotes/index] handleSubmit succeeded')
     resetForm()
   } catch (err) {
-    // エラーは既にstoreで処理されている
+    console.error('[pages/quotes/index] Error in handleSubmit:', err)
+    alert(`操作に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
   }
 }
 
 async function handleDelete(id: string) {
   if (confirm('この名言を削除しますか？')) {
+    console.log('[pages/quotes/index] handleDelete called with id:', id)
     try {
-      await removeQuote(id)
+      // quotesComposableが初期化されていない場合、APIを直接呼び出す
+      if (!quotesComposable.value && !store.value) {
+        console.warn(
+          '[pages/quotes/index] quotesComposable and store are not initialized, using direct API call for delete'
+        )
+        await useFetch(`/api/quotes/${id}`, {
+          method: 'DELETE',
+        })
+        // quotesから削除
+        quotes.value = quotes.value.filter((q) => q.id !== id)
+        initialQuotes.value = initialQuotes.value.filter((q) => q.id !== id)
+        console.log('[pages/quotes/index] Quote deleted via API')
+      } else {
+        await removeQuote(id)
+        console.log('[pages/quotes/index] Quote deleted via composable/store')
+      }
     } catch (err) {
-      // エラーは既にstoreで処理されている
+      console.error('[pages/quotes/index] Error in handleDelete:', err)
+      alert(`削除に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
     }
   }
 }
 
 onMounted(async () => {
+  // Piniaが初期化されるまで待つ
+  await nextTick()
+
+  let pinia = getActivePinia()
+  if (!pinia) {
+    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      pinia = getActivePinia()
+      if (pinia) break
+    }
+  }
+
+  if (!pinia) {
+    console.warn('[pages/quotes/index] Pinia is not initialized, using initialQuotes')
+    // Piniaが初期化されていない場合でも、initialQuotesを使用してquotesを更新
+    if (initialQuotes.value.length > 0) {
+      quotes.value = initialQuotes.value
+    }
+    return
+  }
+
+  try {
+    // Piniaが初期化された後にストアとuseQuotes()、useAuthors()を呼び出す
+    store.value = useQuotesStore()
+    quotesComposable.value = useQuotes()
+    authorsComposable.value = useAuthors()
+
+    // quotes、isLoading、errorをwatchで更新
+    if (quotesComposable.value) {
+      // quotesをwatch
+      watch(
+        () => {
+          if (!quotesComposable.value) return []
+          const quotesRef = quotesComposable.value.quotes as unknown as ComputedRef<
+            readonly Quote[]
+          >
+          return quotesRef.value
+        },
+        (newQuotes) => {
+          if (newQuotes && newQuotes.length > 0) {
+            quotes.value = [...newQuotes] as Quote[]
+          }
+        },
+        { immediate: true }
+      )
+
+      // isLoadingをwatch
+      watch(
+        () => {
+          if (!quotesComposable.value) return false
+          const isLoadingRef = quotesComposable.value.isLoading as unknown as ComputedRef<boolean>
+          return isLoadingRef.value
+        },
+        (newIsLoading) => {
+          isLoading.value = newIsLoading
+        },
+        { immediate: true }
+      )
+
+      // errorをwatch
+      watch(
+        () => {
+          if (!quotesComposable.value) return null
+          const errorRef = quotesComposable.value.error as unknown as ComputedRef<string | null>
+          return errorRef.value
+        },
+        (newError) => {
+          error.value = newError
+        },
+        { immediate: true }
+      )
+    }
+
+    // サーバーサイドで取得したデータをquotesに反映
+    if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
+      quotes.value = fetchedQuotes.value
+    }
+
+    // quotesが空の場合、ストアから読み込む
+    if (store.value && store.value.quotes.length === 0 && quotes.value.length === 0) {
+      await store.value.loadQuotes()
+    }
+  } catch (err) {
+    console.error('[pages/quotes/index] Error initializing stores:', err)
+    // エラーが発生した場合でも、initialQuotesを使用してquotesを更新
+    if (initialQuotes.value.length > 0) {
+      quotes.value = initialQuotes.value
+    }
+    return
+  }
+
   // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
 
   // 既存データでauthorはあるがauthorIdがnullのものを修正
@@ -185,7 +445,7 @@ onMounted(async () => {
     // データを再取得
     const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
     if (refreshedQuotes.value) {
-      store.quotes = refreshedQuotes.value
+      quotes.value = refreshedQuotes.value
     }
   }
 
@@ -206,7 +466,7 @@ onMounted(async () => {
     // データを再取得
     const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
     if (refreshedQuotes.value) {
-      store.quotes = refreshedQuotes.value
+      quotes.value = refreshedQuotes.value
     }
   }
 
@@ -233,7 +493,7 @@ onMounted(async () => {
     // データを再取得
     const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
     if (refreshedQuotes.value) {
-      store.quotes = refreshedQuotes.value
+      quotes.value = refreshedQuotes.value
     }
   }
 

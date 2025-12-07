@@ -13,7 +13,7 @@ import { ApiAuthorRepository } from './ApiAuthorRepository'
 export function createQuoteRepository(): QuoteRepository {
   let useApi = false
   let apiBaseUrl = '/api'
-  
+
   // サーバーサイドとクライアントサイドの両方で動作するように
   if (import.meta.server) {
     // サーバーサイド
@@ -26,11 +26,13 @@ export function createQuoteRepository(): QuoteRepository {
     useApi = useApiValue === true || (typeof useApiValue === 'string' && useApiValue === 'true')
     apiBaseUrl = config.public.apiBaseUrl || '/api'
   }
-  
+
   if (useApi) {
+    console.log('[factory] Using ApiQuoteRepository with baseUrl:', apiBaseUrl)
     return new ApiQuoteRepository(apiBaseUrl)
   }
-  
+
+  console.log('[factory] Using LocalQuoteRepository')
   return new LocalQuoteRepository()
 }
 
@@ -42,7 +44,7 @@ export function createQuoteRepository(): QuoteRepository {
 export function createAuthorRepository(): AuthorRepository {
   let useApi = false
   let apiBaseUrl = '/api'
-  
+
   // サーバーサイドとクライアントサイドの両方で動作するように
   if (import.meta.server) {
     // サーバーサイド
@@ -55,11 +57,10 @@ export function createAuthorRepository(): AuthorRepository {
     useApi = useApiValue === true || (typeof useApiValue === 'string' && useApiValue === 'true')
     apiBaseUrl = config.public.apiBaseUrl || '/api'
   }
-  
+
   if (useApi) {
     return new ApiAuthorRepository(apiBaseUrl)
   }
-  
+
   return new LocalAuthorRepository()
 }
-
