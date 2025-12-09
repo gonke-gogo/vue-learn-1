@@ -4601,3 +4601,5 @@ import { ref } from 'vue' // ← node_modulesから自動的に解決
 2. コードのトランスパイルを個別に行う必要がある
 3. 依存関係の管理が困難（手動で読み込み順序を管理）
 4. 開発体験の悪化（ホットリロードが困難、デバッグが困難）
+
+npx nuxi@latest init vue-learn-1

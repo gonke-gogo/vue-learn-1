@@ -8,7 +8,25 @@
       </div>
     </div>
 
-    <!-- 新規追加フォーム（ページ上部に表示） -->
+    <!-- 検索入力欄 -->
+    <div class="searchSection">
+      <div class="searchInputWrapper">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="名言、著者名、タグで検索..."
+          class="searchInput"
+          @keyup.enter="executeSearch"
+        />
+        <button class="button buttonSearch" @click="executeSearch">検索</button>
+      </div>
+      <div v-if="activeSearchQuery" class="searchInfo">
+        <span>「{{ activeSearchQuery }}」の検索結果: {{ filteredQuotes.length }}件</span>
+        <button class="buttonSmall" @click="clearSearch">クリア</button>
+      </div>
+    </div>
+
+    <!-- 新規追加フォーム -->
     <QuoteForm
       v-if="showAddForm && !editingQuote"
       v-model="form"
@@ -20,12 +38,15 @@
 
     <div v-if="isLoading" class="loading">読み込み中...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else-if="quotes.length === 0" class="emptyState">
-      <p>名言が登録されていません</p>
-      <button class="button" @click="showAddForm = true">最初の名言を追加</button>
+    <div v-else-if="displayedQuotes.length === 0" class="emptyState">
+      <p v-if="activeSearchQuery">検索結果がありません</p>
+      <p v-else>名言が登録されていません</p>
+      <button v-if="!activeSearchQuery" class="button" @click="showAddForm = true">
+        最初の名言を追加
+      </button>
     </div>
     <div v-else class="quotesList">
-      <div v-for="quote in quotes" :key="quote.id">
+      <div v-for="quote in displayedQuotes" :key="quote.id">
         <!-- 編集モードの場合、該当レコードの位置にフォームを表示 -->
         <QuoteForm
           v-if="editingQuote && editingQuote.id === quote.id"
@@ -70,12 +91,13 @@
 <script setup lang="ts">
 import { getActivePinia } from 'pinia'
 import type { ComputedRef } from 'vue'
-import { nextTick } from 'vue'
+import { computed, nextTick } from 'vue'
 import { useQuotes } from '@/composables/useQuotes'
 import { useAuthors } from '@/composables/useAuthors'
 import { useQuotesStore } from '@/stores/quotes'
 import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
+import { searchQuotes as searchQuotesUtil } from '@/utils/quote-utils'
 
 const route = useRoute()
 
@@ -94,6 +116,47 @@ const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
 const quotes = ref<Quote[]>(initialQuotes.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+
+// 検索機能
+const searchQuery = ref('') // 入力用のクエリ
+const activeSearchQuery = ref('') // 実際に検索に使用するクエリ
+
+const filteredQuotes = computed(() => {
+  if (!activeSearchQuery.value.trim()) {
+    return quotes.value
+  }
+
+  // quotesComposableが初期化されている場合はそれを使用、そうでない場合は直接ユーティリティ関数を使用
+  if (quotesComposable.value) {
+    return quotesComposable.value.searchQuotes(activeSearchQuery.value)
+  }
+
+  // quotesComposableが初期化されていない場合でも検索できるように、直接ユーティリティ関数を使用
+  return searchQuotesUtil(quotes.value, activeSearchQuery.value)
+})
+
+// 表示する名言（検索結果または全件）
+const displayedQuotes = computed(() => {
+  return filteredQuotes.value
+})
+
+// 検索を実行（Enterキーまたはボタンクリック時）
+const executeSearch = () => {
+  // 空文字の場合は全件表示（検索クエリをクリア）
+  if (!searchQuery.value.trim()) {
+    activeSearchQuery.value = ''
+    console.log('[pages/quotes/index] Search cleared, showing all quotes')
+  } else {
+    activeSearchQuery.value = searchQuery.value.trim()
+    console.log('[pages/quotes/index] Search executed:', activeSearchQuery.value)
+  }
+}
+
+// 検索をクリア
+const clearSearch = () => {
+  searchQuery.value = ''
+  activeSearchQuery.value = ''
+}
 
 // fetchedQuotesが変更されたらquotesを更新
 watch(
@@ -728,5 +791,82 @@ h2 {
 
 .quoteActions a {
   text-decoration: none;
+}
+
+.searchSection {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.searchInputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.buttonSearch {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.searchInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+/* タブレット以上 */
+@media (min-width: $breakpoint-tablet) {
+  .searchSection {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .searchInputWrapper {
+    flex: 1;
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .searchInput {
+    flex: 1;
+  }
+
+  .buttonSearch {
+    width: auto;
+    flex-shrink: 0;
+    min-width: 100px;
+  }
+
+  .searchInfo {
+    flex-shrink: 0;
+    gap: 1rem;
+  }
 }
 </style>
