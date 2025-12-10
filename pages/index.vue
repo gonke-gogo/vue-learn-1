@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <h1>今日の名言（気分ぶちあげるぜ）</h1>
+    <h1>何が表示されるかな</h1>
     <div v-if="quotes.length === 0" class="emptyState">
       <p>名言が登録されていません</p>
       <NuxtLink to="/quotes" class="button">名言を追加する</NuxtLink>
@@ -31,7 +31,6 @@
 
       <div class="actions">
         <button class="button" @click="pickNext">次の候補</button>
-        <NuxtLink to="/quotes" class="button buttonSecondary">新規追加</NuxtLink>
         <NuxtLink
           v-if="selectedQuote"
           :to="`/quotes/${selectedQuote.id}`"
@@ -80,11 +79,6 @@ watch(
   },
   { immediate: true }
 )
-
-// デバッグ: quotesの初期値を確認
-console.log('[pages/index] Initial quotes length:', quotes.value.length)
-console.log('[pages/index] Initial fetchedQuotes:', fetchedQuotes.value?.length || 0)
-console.log('[pages/index] fetchedQuotes.value:', fetchedQuotes.value)
 
 const getAuthorName = (quote: Quote) => {
   // Piniaが初期化されていることを確認

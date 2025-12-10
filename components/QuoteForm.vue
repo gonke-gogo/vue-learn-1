@@ -214,7 +214,6 @@ watch(
 
 // data-form-mode属性とdata-form-action属性を使った例：コンポーネントマウント時に属性を読み取る
 onMounted(async () => {
-  console.log('[QuoteForm] onMounted called')
   // Piniaが初期化されるまで待つ
   await nextTick()
 
@@ -230,7 +229,6 @@ onMounted(async () => {
 
   if (pinia) {
     try {
-      console.log('[QuoteForm] Pinia initialized, using useAuthors()')
       // Piniaが初期化された後にuseAuthors()を呼び出す
       authorsComposable.value = useAuthors()
 
