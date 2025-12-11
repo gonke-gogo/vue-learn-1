@@ -2,6 +2,15 @@
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineNuxtConfig({
+  vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          silenceDeprecations: ['legacy-js-api'],
+        },
+      },
+    },
+  },
   compatibilityDate: '2024-01-01',
   devtools: { enabled: true },
   ssr: process.env.NUXT_DISABLE_SSR !== 'true',
