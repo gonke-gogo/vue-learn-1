@@ -6,8 +6,8 @@
       <p v-if="authorQuotes.length > 0" class="count">{{ authorQuotes.length }}件の名言</p>
     </div>
 
-    <div v-if="isLoading" class="loading">読み込み中...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
+    <div v-if="pending" class="loading">読み込み中...</div>
+    <div v-else-if="error" class="error">{{ error?.message || 'エラーが発生しました' }}</div>
     <div v-else-if="authorQuotes.length === 0" class="emptyState">
       <p>この著者の名言は登録されていません</p>
       <NuxtLink to="/quotes" class="button">名言を追加する</NuxtLink>
@@ -37,13 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { getActivePinia } from 'pinia'
-import type { ComputedRef } from 'vue'
-import { nextTick } from 'vue'
-import { useQuotes } from '@/composables/useQuotes'
-import { useAuthors } from '@/composables/useAuthors'
-import { useQuotesStore } from '@/stores/quotes'
-import { useAuthorsStore } from '@/stores/authors'
+import { computed, ref, watch } from 'vue'
 import type { Quote } from '@/types/quote'
 import type { Author } from '@/types/author'
 
@@ -51,32 +45,28 @@ const route = useRoute()
 const router = useRouter()
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
-const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
-const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
+const {
+  data: fetchedQuotes,
+  pending: quotesPending,
+  error: quotesError,
+} = await useFetch<Quote[]>('/api/quotes')
+const {
+  data: fetchedAuthors,
+  pending: authorsPending,
+  error: authorsError,
+} = await useFetch<Author[]>('/api/authors')
 
-// Piniaストアとcomposablesの参照（クライアントサイドでのみ初期化）
-const quotesStore = ref<ReturnType<typeof useQuotesStore> | null>(null)
-const authorsStore = ref<ReturnType<typeof useAuthorsStore> | null>(null)
-const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
-const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
+// サーバーサイドで取得したデータを使用
+const quotes = ref<Quote[]>(fetchedQuotes.value || [])
+const authors = ref<Author[]>(fetchedAuthors.value || [])
 
-// サーバーサイドで取得したデータを一時的に保持
-const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
-const initialAuthors = ref<Author[]>(fetchedAuthors.value || [])
+// ローディング状態とエラー状態
+const pending = computed(() => quotesPending.value || authorsPending.value)
+const error = computed(() => quotesError.value || authorsError.value)
 
-// quotes、authors、isLoading、errorなどをrefとして定義（onMounted内で設定）
-const quotes = ref<Quote[]>(initialQuotes.value)
-const authors = ref<Author[]>(initialAuthors.value)
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-
-// 関数を定義（onMounted内で更新）
+// 関数を定義
 const getAuthor = (id: string): Author | undefined => {
-  if (authorsComposable.value) {
-    return authorsComposable.value.getAuthor(id)
-  }
-  // authorsComposableが初期化されていない場合、initialAuthorsから検索
-  return initialAuthors.value.find((a) => a.id === id)
+  return authors.value.find((a) => a.id === id)
 }
 
 // fetchedQuotesが変更されたらquotesを更新
@@ -85,7 +75,6 @@ watch(
   (newQuotes) => {
     if (newQuotes && newQuotes.length > 0) {
       quotes.value = [...newQuotes] as Quote[]
-      initialQuotes.value = [...newQuotes] as Quote[]
     }
   },
   { immediate: true }
@@ -97,7 +86,6 @@ watch(
   (newAuthors) => {
     if (newAuthors && newAuthors.length > 0) {
       authors.value = [...newAuthors] as Author[]
-      initialAuthors.value = [...newAuthors] as Author[]
     }
   },
   { immediate: true }
@@ -117,160 +105,7 @@ function navigateToQuote(id: string) {
   router.push(`/quotes/${id}`)
 }
 
-onMounted(async () => {
-  // Piniaが初期化されるまで待つ
-  await nextTick()
-
-  let pinia = getActivePinia()
-  if (!pinia) {
-    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
-    for (let i = 0; i < 20; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      pinia = getActivePinia()
-      if (pinia) break
-    }
-  }
-
-  if (!pinia) {
-    // Piniaが初期化されていない場合でも、initialQuotesとinitialAuthorsを使用
-    if (initialQuotes.value.length > 0) {
-      quotes.value = initialQuotes.value
-    }
-    if (initialAuthors.value.length > 0) {
-      authors.value = initialAuthors.value
-    }
-    return
-  }
-
-  try {
-    // Piniaが初期化された後にストアとcomposablesを呼び出す
-    quotesStore.value = useQuotesStore()
-    authorsStore.value = useAuthorsStore()
-    quotesComposable.value = useQuotes()
-    authorsComposable.value = useAuthors()
-
-    // quotes、authors、isLoading、errorをwatchで更新
-    if (quotesComposable.value) {
-      // quotesをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return []
-          const quotesRef = quotesComposable.value.quotes as unknown as ComputedRef<
-            readonly Quote[]
-          >
-          return quotesRef.value
-        },
-        (newQuotes) => {
-          if (newQuotes && newQuotes.length > 0) {
-            quotes.value = [...newQuotes] as Quote[]
-          }
-        },
-        { immediate: true }
-      )
-
-      // isLoadingをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return false
-          const isLoadingRef = quotesComposable.value.isLoading as unknown as ComputedRef<boolean>
-          return isLoadingRef.value
-        },
-        (newIsLoading) => {
-          isLoading.value = newIsLoading
-        },
-        { immediate: true }
-      )
-
-      // errorをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return null
-          const errorRef = quotesComposable.value.error as unknown as ComputedRef<string | null>
-          return errorRef.value
-        },
-        (newError) => {
-          error.value = newError
-        },
-        { immediate: true }
-      )
-    }
-
-    if (authorsComposable.value) {
-      // authorsをwatch
-      watch(
-        () => {
-          if (!authorsComposable.value) return []
-          const authorsRef = authorsComposable.value.authors as unknown as ComputedRef<
-            readonly Author[]
-          >
-          return authorsRef.value
-        },
-        (newAuthors) => {
-          if (newAuthors && newAuthors.length > 0) {
-            authors.value = [...newAuthors] as Author[]
-          }
-        },
-        { immediate: true }
-      )
-
-      // isLoadingをwatch（authorsComposableのisLoadingも考慮）
-      watch(
-        () => {
-          if (!authorsComposable.value) return false
-          const isLoadingRef = authorsComposable.value.isLoading as unknown as ComputedRef<boolean>
-          return isLoadingRef.value
-        },
-        (newIsLoading) => {
-          if (newIsLoading) {
-            isLoading.value = newIsLoading
-          }
-        },
-        { immediate: true }
-      )
-
-      // errorをwatch（authorsComposableのerrorも考慮）
-      watch(
-        () => {
-          if (!authorsComposable.value) return null
-          const errorRef = authorsComposable.value.error as unknown as ComputedRef<string | null>
-          return errorRef.value
-        },
-        (newError) => {
-          if (newError) {
-            error.value = newError
-          }
-        },
-        { immediate: true }
-      )
-    }
-
-    // サーバーサイドで取得したデータをquotesとauthorsに反映
-    if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
-      quotes.value = fetchedQuotes.value
-    }
-    if (fetchedAuthors.value && fetchedAuthors.value.length > 0) {
-      authors.value = fetchedAuthors.value
-    }
-
-    // quotesが空の場合、ストアから読み込む
-    if (quotesStore.value && quotes.value.length === 0) {
-      await quotesStore.value.loadQuotes()
-    }
-
-    // authorsが空の場合、ストアから読み込む
-    if (authorsStore.value && authors.value.length === 0) {
-      await authorsStore.value.loadAuthors()
-    }
-  } catch (err) {
-    // エラーが発生した場合でも、initialQuotesとinitialAuthorsを使用
-    if (initialQuotes.value.length > 0) {
-      quotes.value = initialQuotes.value
-    }
-    if (initialAuthors.value.length > 0) {
-      authors.value = initialAuthors.value
-    }
-  }
-})
+// onMountedは不要（SSRで既にデータを取得済み）
 </script>
 
 <style scoped lang="scss">
