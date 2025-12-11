@@ -1,25 +1,13 @@
 <template>
   <div class="page">
-    <h1>今日の名言（気分ぶちあげるぜ）</h1>
+    <h1>何が表示されるかな</h1>
     <div v-if="quotes.length === 0" class="emptyState">
       <p>名言が登録されていません</p>
       <NuxtLink to="/quotes" class="button">名言を追加する</NuxtLink>
     </div>
 
     <div v-else>
-      <div class="moodSelector">
-        <label for="mood">今日の気分 (1〜5):</label>
-        <select id="mood" v-model.number="mood" class="moodSelect">
-          <option v-for="n in 5" :key="n" :value="n">{{ n }}</option>
-        </select>
-      </div>
-
-      <div
-        v-if="selectedQuote"
-        class="quoteCard"
-        :[moodAttr]="mood"
-        :[quoteIdAttr]="selectedQuote.id"
-      >
+      <div v-if="selectedQuote" class="quoteCard" :[quoteIdAttr]="selectedQuote.id">
         <p class="quoteText">{{ selectedQuote.text }}</p>
         <p v-if="getAuthorName(selectedQuote)" class="quoteAuthor">
           — {{ getAuthorName(selectedQuote) }}
@@ -31,7 +19,6 @@
 
       <div class="actions">
         <button class="button" @click="pickNext">次の候補</button>
-        <NuxtLink to="/quotes" class="button buttonSecondary">新規追加</NuxtLink>
         <NuxtLink
           v-if="selectedQuote"
           :to="`/quotes/${selectedQuote.id}`"
@@ -73,18 +60,12 @@ watch(
   fetchedQuotes,
   (newQuotes) => {
     if (newQuotes && newQuotes.length > 0) {
-      console.log('[pages/index] fetchedQuotes changed, updating quotes:', newQuotes.length)
       quotes.value = [...newQuotes] as Quote[]
       initialQuotes.value = [...newQuotes] as Quote[]
     }
   },
   { immediate: true }
 )
-
-// デバッグ: quotesの初期値を確認
-console.log('[pages/index] Initial quotes length:', quotes.value.length)
-console.log('[pages/index] Initial fetchedQuotes:', fetchedQuotes.value?.length || 0)
-console.log('[pages/index] fetchedQuotes.value:', fetchedQuotes.value)
 
 const getAuthorName = (quote: Quote) => {
   // Piniaが初期化されていることを確認
@@ -96,18 +77,16 @@ const getAuthorName = (quote: Quote) => {
   try {
     return quotesComposable.value.getAuthorName(quote)
   } catch (error) {
-    console.warn('[pages/index] Error in getAuthorName:', error)
     return quote.author
   }
 }
 
-const mood = ref(3)
 const selectedQuote = ref<Quote | null>(null)
-const salt = ref(0)
+// リロードするたびに違う名言が表示されるように、saltの初期値をランダムにする
+const salt = ref(Math.floor(Math.random() * 10000))
 
 // 動的引数の例
-// 気分と名言IDを動的属性として設定（テスト・デバッグ用）
-const moodAttr = ref('data-mood')
+// 名言IDを動的属性として設定（テスト・デバッグ用）
 const quoteIdAttr = ref('data-quote-id')
 
 // 自動切り替え用タイマーID
@@ -125,7 +104,7 @@ function pickQuote() {
     selectedQuote.value = null
     return
   }
-  const random = useSeededRandom(today.value, mood.value, salt.value.toString())
+  const random = useSeededRandom(today.value, salt.value.toString())
   const picked = random.pick(quotes.value)
   // readonly QuoteからQuoteに変換（型アサーション）
   selectedQuote.value = (picked ? { ...picked } : null) as Quote | null
@@ -174,11 +153,7 @@ onMounted(async () => {
     }
   }
 
-  // useFetchで取得したデータを確認
-  console.log('[pages/index] initialQuotes:', initialQuotes.value.length)
-
   if (!pinia) {
-    console.warn('[pages/index] Pinia is not initialized, using initialQuotes')
     // Piniaが初期化されていない場合でも、initialQuotesを使用してquotesを更新
     if (initialQuotes.value.length > 0) {
       quotes.value = initialQuotes.value as Quote[]
@@ -186,10 +161,6 @@ onMounted(async () => {
     // quotesにデータがある場合はpickQuote()を呼び出す
     await nextTick()
     if (quotes.value.length > 0) {
-      console.log(
-        '[pages/index] Calling pickQuote() without Pinia, quotes.length:',
-        quotes.value.length
-      )
       pickQuote()
     }
     return
@@ -200,7 +171,6 @@ onMounted(async () => {
     store.value = useQuotesStore()
     quotesComposable.value = useQuotes()
   } catch (error) {
-    console.error('[pages/index] Error initializing stores:', error)
     // エラーが発生した場合でも、initialQuotesを使用してquotesを更新
     if (initialQuotes.value.length > 0) {
       quotes.value = initialQuotes.value as Quote[]
@@ -208,24 +178,16 @@ onMounted(async () => {
     // quotesにデータがある場合はpickQuote()を呼び出す
     await nextTick()
     if (quotes.value.length > 0) {
-      console.log(
-        '[pages/index] Calling pickQuote() after error, quotes.length:',
-        quotes.value.length
-      )
       pickQuote()
     }
     return
   }
 
-  console.log('[pages/index] store.quotes:', store.value.quotes.length)
-
   // useFetchで取得したデータがストアにない場合、ストアから読み込む
   // （persistedstateで既にデータが復元されている可能性があるため）
   if (store.value.quotes.length === 0) {
     // ストアにデータがない場合、loadQuotes()を呼び出す
-    console.log('[pages/index] Loading quotes from API...')
     await store.value.loadQuotes()
-    console.log('[pages/index] Loaded quotes:', store.value.quotes.length)
   }
 
   // quotesをcomputedに設定（Piniaが初期化された後）
@@ -237,7 +199,6 @@ onMounted(async () => {
         const quotesRef = quotesComposable.value.quotes as unknown as ComputedRef<readonly Quote[]>
         result = quotesRef.value as any[]
       } catch (error) {
-        console.warn('[pages/index] Error accessing quotesComposable.value.quotes:', error)
         result = initialQuotes.value as any[]
       }
     } else if (store.value) {
@@ -248,7 +209,6 @@ onMounted(async () => {
 
     // 結果が空配列の場合、initialQuotesを使用
     if (result.length === 0 && initialQuotes.value.length > 0) {
-      console.log('[pages/index] quotesComputed returned empty, using initialQuotes')
       return initialQuotes.value as any[]
     }
 
@@ -260,7 +220,6 @@ onMounted(async () => {
   watch(
     quotesComputed,
     (newQuotes) => {
-      console.log('[pages/index] quotesComputed changed, new length:', newQuotes.length)
       if (newQuotes.length > 0) {
         // 新しい配列を作成して型を変換
         const newQuotesArray = newQuotes.map((q) => ({
@@ -270,7 +229,6 @@ onMounted(async () => {
         quotes.value = newQuotesArray
       } else if (initialQuotes.value.length > 0 && quotes.value.length === 0) {
         // 空配列の場合はinitialQuotesを使用（quotesが空の場合のみ）
-        console.log('[pages/index] quotesComputed is empty, using initialQuotes')
         quotes.value = initialQuotes.value.map((q) => ({
           ...q,
           tags: q.tags ? [...q.tags] : undefined,
@@ -287,15 +245,15 @@ onMounted(async () => {
       ...q,
       tags: q.tags ? [...q.tags] : undefined,
     })) as Quote[]
-    console.log('[pages/index] Set quotes from initialQuotes after nextTick:', quotes.value.length)
   }
 
   // watchをonMounted内で設定（Piniaが初期化された後）
   watch(
-    [mood, quotes],
+    quotes,
     () => {
       if (quotes.value.length > 0) {
-        salt.value = 0
+        // quotesが変更されたときも、ランダムなsaltで選ぶ
+        salt.value = Math.floor(Math.random() * 10000)
         pickQuote()
       }
     },
@@ -318,20 +276,11 @@ onMounted(async () => {
 
   // quotesが更新されたことを確認してからpickQuote()を呼び出す
   if (quotes.value.length > 0) {
-    console.log('[pages/index] Calling pickQuote() with quotes.length:', quotes.value.length)
     pickQuote()
-    console.log(
-      '[pages/index] selectedQuote after pickQuote():',
-      selectedQuote.value?.text?.substring(0, 50)
-    )
   } else {
     // quotesが空の場合、もう一度nextTickで待つ
     await nextTick()
     if (quotes.value.length > 0) {
-      console.log(
-        '[pages/index] Calling pickQuote() after second nextTick, quotes.length:',
-        quotes.value.length
-      )
       pickQuote()
     }
   }
@@ -367,36 +316,6 @@ h1 {
     font-size: 2rem;
     margin-bottom: 2rem;
   }
-}
-
-.moodSelector {
-  margin-bottom: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-/* タブレット以上 */
-@media (min-width: $breakpoint-tablet) {
-  .moodSelector {
-    flex-direction: row;
-    align-items: center;
-    gap: 1rem;
-  }
-}
-
-.moodSelector label {
-  font-weight: 500;
-}
-
-.moodSelect {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.25rem;
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  font-size: 1rem;
 }
 
 .quoteCard {

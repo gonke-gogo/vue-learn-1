@@ -187,9 +187,7 @@ function cancelEdit() {
 }
 
 async function handleSubmit(formValue: { text: string; authorId?: string; tags?: string[] }) {
-  console.log('[pages/quotes/[id]] handleSubmit called with:', formValue)
   if (!quote.value) {
-    console.error('[pages/quotes/[id]] quote.value is null')
     return
   }
 
@@ -202,9 +200,6 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
 
   // それでも初期化されていない場合、APIを直接呼び出す
   if (!quotesComposable.value && !store.value) {
-    console.warn(
-      '[pages/quotes/[id]] quotesComposable and store are not initialized, using direct API call'
-    )
     isSaving.value = true
     try {
       // APIを直接呼び出して更新
@@ -227,7 +222,6 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
       delete newQuery.edit
       router.push({ query: newQuery })
     } catch (err) {
-      console.error('[pages/quotes/[id]] Error updating via API:', err)
       alert(`更新に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
     } finally {
       isSaving.value = false
@@ -237,8 +231,6 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
 
   isSaving.value = true
   try {
-    console.log('[pages/quotes/[id]] Calling updateQuote with id:', quote.value.id)
-
     // quotesComposableが利用可能な場合はそれを使用、そうでなければstoreを直接使用
     if (quotesComposable.value) {
       await quotesComposable.value.updateQuote(quote.value.id, formValue)
@@ -250,8 +242,6 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
         quote.value = updatedQuote as Quote
       }
     }
-
-    console.log('[pages/quotes/[id]] updateQuote succeeded')
 
     // 最新の状態を取得
     const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
@@ -268,7 +258,6 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
     delete newQuery.edit
     router.push({ query: newQuery })
   } catch (err) {
-    console.error('[pages/quotes/[id]] Error in handleSubmit:', err)
     alert(`更新に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
   } finally {
     isSaving.value = false
@@ -278,25 +267,18 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
 async function handleDelete() {
   if (!quote.value) return
   if (confirm('この名言を削除しますか？')) {
-    console.log('[pages/quotes/[id]] handleDelete called with id:', quote.value.id)
     try {
       // quotesComposableが初期化されていない場合、APIを直接呼び出す
       if (!quotesComposable.value && !store.value) {
-        console.warn(
-          '[pages/quotes/[id]] quotesComposable and store are not initialized, using direct API call for delete'
-        )
         await useFetch(`/api/quotes/${quote.value.id}`, {
           method: 'DELETE',
         })
-        console.log('[pages/quotes/[id]] Quote deleted via API')
         router.push('/quotes')
       } else {
         await removeQuote(quote.value.id)
-        console.log('[pages/quotes/[id]] Quote deleted via composable/store')
         router.push('/quotes')
       }
     } catch (err) {
-      console.error('[pages/quotes/[id]] Error in handleDelete:', err)
       alert(`削除に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
     }
   }
@@ -317,7 +299,6 @@ onMounted(async () => {
   }
 
   if (!pinia) {
-    console.warn('[pages/quotes/[id]] Pinia is not initialized, using initialQuotes')
     // Piniaが初期化されていない場合でも、initialQuotesを使用してquoteを更新
     if (initialQuotes.value.length > 0) {
       const foundQuote = initialQuotes.value.find((q) => q.id === quoteId.value)
@@ -414,7 +395,6 @@ onMounted(async () => {
       }
     }
   } catch (err) {
-    console.error('[pages/quotes/[id]] Error initializing stores:', err)
     // エラーが発生した場合でも、initialQuotesを使用してquoteを更新
     if (initialQuotes.value.length > 0) {
       const foundQuote = initialQuotes.value.find((q) => q.id === quoteId.value)

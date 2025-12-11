@@ -145,10 +145,8 @@ const executeSearch = () => {
   // 空文字の場合は全件表示（検索クエリをクリア）
   if (!searchQuery.value.trim()) {
     activeSearchQuery.value = ''
-    console.log('[pages/quotes/index] Search cleared, showing all quotes')
   } else {
     activeSearchQuery.value = searchQuery.value.trim()
-    console.log('[pages/quotes/index] Search executed:', activeSearchQuery.value)
   }
 }
 
@@ -163,7 +161,6 @@ watch(
   fetchedQuotes,
   (newQuotes) => {
     if (newQuotes && newQuotes.length > 0) {
-      console.log('[pages/quotes/index] fetchedQuotes changed, updating quotes:', newQuotes.length)
       quotes.value = [...newQuotes] as Quote[]
       initialQuotes.value = [...newQuotes] as Quote[]
     }
@@ -267,25 +264,16 @@ function handleQuoteClick(quote: Quote) {
 
 // EventEmitterで受け取ったフォームの値のみを使用（valueのみを親に投げる要件を満たす）
 async function handleSubmit(formValue: { text: string; authorId?: string; tags?: string[] }) {
-  console.log('[pages/quotes/index] handleSubmit called with:', formValue)
   try {
     if (editingQuote.value) {
-      console.log('[pages/quotes/index] Updating quote:', editingQuote.value.id)
       // quotesComposableが初期化されていない場合、APIを直接呼び出す
       if (!quotesComposable.value && !store.value) {
-        console.warn(
-          '[pages/quotes/index] quotesComposable and store are not initialized, using direct API call for update'
-        )
         // authorIdが空文字列の場合はundefinedに変換
         const requestBody = {
           ...formValue,
           authorId:
             formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
         }
-        console.log(
-          '[pages/quotes/index] requestBody being sent for update:',
-          JSON.stringify(requestBody, null, 2)
-        )
         const { data: updatedQuote } = await useFetch<Quote>(
           `/api/quotes/${editingQuote.value.id}`,
           {
@@ -293,7 +281,6 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
             body: requestBody,
           }
         )
-        console.log('[pages/quotes/index] updatedQuote received:', updatedQuote.value)
         if (updatedQuote.value) {
           // quotesを更新
           const index = quotes.value.findIndex((q) => q.id === editingQuote.value?.id)
@@ -315,31 +302,18 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
         await updateQuote(editingQuote.value.id, requestBody)
       }
     } else {
-      console.log('[pages/quotes/index] Adding new quote')
       // quotesComposableが初期化されていない場合、APIを直接呼び出す
       if (!quotesComposable.value && !store.value) {
-        console.warn(
-          '[pages/quotes/index] quotesComposable and store are not initialized, using direct API call'
-        )
-        console.log(
-          '[pages/quotes/index] formValue being sent:',
-          JSON.stringify(formValue, null, 2)
-        )
         // authorIdが空文字列の場合はundefinedに変換
         const requestBody = {
           ...formValue,
           authorId:
             formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
         }
-        console.log(
-          '[pages/quotes/index] requestBody being sent:',
-          JSON.stringify(requestBody, null, 2)
-        )
         const { data: newQuote } = await useFetch<Quote>('/api/quotes', {
           method: 'POST',
           body: requestBody,
         })
-        console.log('[pages/quotes/index] newQuote received:', newQuote.value)
         if (newQuote.value) {
           // quotesに追加
           quotes.value = [...quotes.value, newQuote.value]
@@ -352,43 +326,30 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
           authorId:
             formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
         }
-        console.log(
-          '[pages/quotes/index] requestBody being sent to addQuote:',
-          JSON.stringify(requestBody, null, 2)
-        )
         await addQuote(requestBody)
       }
     }
-    console.log('[pages/quotes/index] handleSubmit succeeded')
     resetForm()
   } catch (err) {
-    console.error('[pages/quotes/index] Error in handleSubmit:', err)
     alert(`操作に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
   }
 }
 
 async function handleDelete(id: string) {
   if (confirm('この名言を削除しますか？')) {
-    console.log('[pages/quotes/index] handleDelete called with id:', id)
     try {
       // quotesComposableが初期化されていない場合、APIを直接呼び出す
       if (!quotesComposable.value && !store.value) {
-        console.warn(
-          '[pages/quotes/index] quotesComposable and store are not initialized, using direct API call for delete'
-        )
         await useFetch(`/api/quotes/${id}`, {
           method: 'DELETE',
         })
         // quotesから削除
         quotes.value = quotes.value.filter((q) => q.id !== id)
         initialQuotes.value = initialQuotes.value.filter((q) => q.id !== id)
-        console.log('[pages/quotes/index] Quote deleted via API')
       } else {
         await removeQuote(id)
-        console.log('[pages/quotes/index] Quote deleted via composable/store')
       }
     } catch (err) {
-      console.error('[pages/quotes/index] Error in handleDelete:', err)
       alert(`削除に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
     }
   }
@@ -409,7 +370,6 @@ onMounted(async () => {
   }
 
   if (!pinia) {
-    console.warn('[pages/quotes/index] Pinia is not initialized, using initialQuotes')
     // Piniaが初期化されていない場合でも、initialQuotesを使用してquotesを更新
     if (initialQuotes.value.length > 0) {
       quotes.value = initialQuotes.value
@@ -479,7 +439,6 @@ onMounted(async () => {
       await store.value.loadQuotes()
     }
   } catch (err) {
-    console.error('[pages/quotes/index] Error initializing stores:', err)
     // エラーが発生した場合でも、initialQuotesを使用してquotesを更新
     if (initialQuotes.value.length > 0) {
       quotes.value = initialQuotes.value

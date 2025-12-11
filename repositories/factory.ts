@@ -28,11 +28,9 @@ export function createQuoteRepository(): QuoteRepository {
   }
 
   if (useApi) {
-    console.log('[factory] Using ApiQuoteRepository with baseUrl:', apiBaseUrl)
     return new ApiQuoteRepository(apiBaseUrl)
   }
 
-  console.log('[factory] Using LocalQuoteRepository')
   return new LocalQuoteRepository()
 }
 

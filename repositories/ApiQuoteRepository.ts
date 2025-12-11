@@ -22,10 +22,6 @@ export class ApiQuoteRepository implements QuoteRepository {
     const url = `${this.baseUrl}${endpoint}`
 
     try {
-      console.debug(
-        `[ApiQuoteRepository] ${method} ${url}`,
-        options?.body ? { body: options.body } : ''
-      )
       const response = await $fetch<T>(url, {
         method:
           (method as
@@ -41,7 +37,6 @@ export class ApiQuoteRepository implements QuoteRepository {
             | undefined) || 'GET',
         body: options?.body as Record<string, any> | BodyInit | null | undefined,
       })
-      console.debug(`[ApiQuoteRepository] ${method} ${url} - Success`)
       return response as T
     } catch (error: unknown) {
       // エラーレスポンスを適切に処理
@@ -52,11 +47,6 @@ export class ApiQuoteRepository implements QuoteRepository {
         status?: number
       }
       const message = errorObj?.data?.message || errorObj?.message || 'API request failed'
-      console.error(`[ApiQuoteRepository] ${method} ${url} - Failed:`, {
-        message,
-        statusCode: errorObj?.statusCode || errorObj?.status,
-        error,
-      })
       throw new RepositoryError(message, error)
     }
   }

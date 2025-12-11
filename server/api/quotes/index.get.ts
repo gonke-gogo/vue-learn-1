@@ -30,7 +30,6 @@ export default defineEventHandler(async (_event): Promise<Quote[]> => {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('[API] Supabase error:', error)
       throw createError({
         statusCode: 500,
         message: `Failed to fetch quotes: ${error.message}`,
@@ -48,7 +47,6 @@ export default defineEventHandler(async (_event): Promise<Quote[]> => {
       updatedAt: quote.updated_at,
     }))
   } catch (err: any) {
-    console.error('[API] Error fetching quotes:', err)
     // Supabase接続エラーの場合は空配列を返す（アプリがクラッシュしないように）
     if (err.message?.includes('Supabase環境変数') || err.message?.includes('fetch')) {
       return []

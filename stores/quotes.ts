@@ -13,13 +13,10 @@ export const useQuotesStore = defineStore('quotes', () => {
     isLoading.value = true
     error.value = null
     try {
-      console.log('[useQuotesStore] Loading quotes...')
       quotes.value = await repository.list()
-      console.log(`[useQuotesStore] Successfully loaded ${quotes.value.length} quotes`)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load quotes'
       error.value = errorMessage
-      console.error('[useQuotesStore] Failed to load quotes:', err)
     } finally {
       isLoading.value = false
     }
@@ -29,15 +26,12 @@ export const useQuotesStore = defineStore('quotes', () => {
     isLoading.value = true
     error.value = null
     try {
-      console.log('[useQuotesStore] Adding quote:', quote)
       const newQuote = await repository.add(quote)
       quotes.value.push(newQuote)
-      console.log('[useQuotesStore] Successfully added quote:', newQuote.id)
       return newQuote
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add quote'
       error.value = errorMessage
-      console.error('[useQuotesStore] Failed to add quote:', err)
       throw err
     } finally {
       isLoading.value = false

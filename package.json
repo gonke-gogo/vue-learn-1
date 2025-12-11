@@ -9,11 +9,13 @@
   "scripts": {
     "dev": "nuxt dev",
     "dev:auto": "bash scripts/dev.sh",
+    "dev:clean": "rm -rf .nuxt && npm run dev",
     "build": "nuxt build",
     "test": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "clean": "rm -rf .nuxt .output node_modules/.cache"
   },
   "dependencies": {
     "@pinia/nuxt": "^0.11.3",

@@ -40,15 +40,15 @@ function stringToSeed(str: string): number {
 }
 
 /**
- * date, mood, saltからシード値を生成
+ * date, saltからシード値を生成
  */
-function generateSeed(date: string, mood: number, salt?: string): number {
-  const seedStr = `${date}-${mood}${salt ? `-${salt}` : ''}`
+function generateSeed(date: string, salt?: string): number {
+  const seedStr = `${date}${salt ? `-${salt}` : ''}`
   return stringToSeed(seedStr)
 }
 
-export function useSeededRandom(date: string, mood: number, salt?: string) {
-  const seed = generateSeed(date, mood, salt)
+export function useSeededRandom(date: string, salt?: string) {
+  const seed = generateSeed(date, salt)
   const rng = new SeededRandom(seed)
 
   /**
@@ -75,4 +75,3 @@ export function useSeededRandom(date: string, mood: number, salt?: string) {
     seed,
   }
 }
-
