@@ -92,19 +92,13 @@ const quoteIdAttr = ref('data-quote-id')
 // 自動切り替え用タイマーID
 const rotateTimerId = ref<number | null>(null)
 
-const today = computed(() => {
-  const date = new Date()
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-    date.getDate()
-  ).padStart(2, '0')}`
-})
-
 function pickQuote() {
   if (quotes.value.length === 0) {
     selectedQuote.value = null
     return
   }
-  const random = useSeededRandom(today.value, salt.value.toString())
+  // saltの値から直接インデックスを計算して名言を選ぶ
+  const random = useSeededRandom(salt.value)
   const picked = random.pick(quotes.value)
   // readonly QuoteからQuoteに変換（型アサーション）
   selectedQuote.value = (picked ? { ...picked } : null) as Quote | null

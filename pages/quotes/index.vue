@@ -430,14 +430,13 @@ onMounted(async () => {
     }
 
     // サーバーサイドで取得したデータをquotesに反映
+    // SSRで取得したデータをそのまま使用（storeから再度取得しない）
+    // storeは追加・更新・削除などの操作のみに使用する
     if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
       quotes.value = fetchedQuotes.value
     }
-
-    // quotesが空の場合、ストアから読み込む
-    if (store.value && store.value.quotes.length === 0 && quotes.value.length === 0) {
-      await store.value.loadQuotes()
-    }
+    // 注意: SSRで取得できない場合は、useFetchが自動的にクライアントサイドで再取得するため、
+    // storeから明示的に取得する必要はない
   } catch (err) {
     // エラーが発生した場合でも、initialQuotesを使用してquotesを更新
     if (initialQuotes.value.length > 0) {

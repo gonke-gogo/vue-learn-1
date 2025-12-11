@@ -2,15 +2,6 @@
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineNuxtConfig({
-  vite: {
-    css: {
-      preprocessorOptions: {
-        scss: {
-          silenceDeprecations: ['legacy-js-api'],
-        },
-      },
-    },
-  },
   compatibilityDate: '2024-01-01',
   devtools: { enabled: true },
   ssr: process.env.NUXT_DISABLE_SSR !== 'true',
@@ -47,6 +38,11 @@ export default defineNuxtConfig({
       },
       // CSSの最適化
       devSourcemap: false, // 開発モードでのソースマップを無効化（パフォーマンス向上）
+      preprocessorOptions: {
+        scss: {
+          silenceDeprecations: ['legacy-js-api'],
+        },
+      },
     },
   },
   nitro: {
