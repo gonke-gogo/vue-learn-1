@@ -173,9 +173,6 @@ onMounted(async () => {
   }
 
   if (!pinia) {
-    console.warn(
-      '[pages/authors/index] Pinia is not initialized, using initialQuotes and initialAuthors'
-    )
     // Piniaが初期化されていない場合でも、initialQuotesとinitialAuthorsを使用
     if (initialQuotes.value.length > 0) {
       quotes.value = initialQuotes.value
@@ -318,7 +315,6 @@ onMounted(async () => {
       }
     }
   } catch (err) {
-    console.error('[pages/authors/index] Error initializing stores:', err)
     // エラーが発生した場合でも、initialQuotesとinitialAuthorsを使用
     if (initialQuotes.value.length > 0) {
       quotes.value = initialQuotes.value

@@ -48,7 +48,7 @@ const getThemeStore = (): ReturnType<typeof useThemeStore> | null => {
       return themeStoreInstance.value
     }
   } catch (err) {
-    console.error('[layouts/default] Error getting theme store:', err)
+    // エラーは無視して続行
   }
 
   return null
@@ -82,24 +82,21 @@ onMounted(async () => {
       if (savedTheme === 'dark' || savedTheme === 'light') {
         const html = document.documentElement
         html.setAttribute('data-theme', savedTheme)
-        console.log('[layouts/default] Applied saved theme from localStorage:', savedTheme)
       }
     } catch (err) {
-      console.error('[layouts/default] Error reading theme from localStorage:', err)
+      // エラーは無視して続行
     }
 
     // Piniaが初期化されるまで待つ（最大40回、50ms間隔 = 2秒）
     for (let i = 0; i < 40; i++) {
       const store = getThemeStore()
       if (store) {
-        console.log(`[layouts/default] Theme store initialized after ${i + 1} attempts`)
         // ストアのwatchで自動的に適用されるが、念のため初期化
         try {
           const html = document.documentElement
           html.setAttribute('data-theme', store.theme)
-          console.log('[layouts/default] Applied theme from store:', store.theme)
         } catch (err) {
-          console.error('[layouts/default] Error applying theme:', err)
+          // エラーは無視して続行
         }
         break
       }
@@ -114,32 +111,27 @@ onMounted(async () => {
         const currentTheme = html.getAttribute('data-theme') || 'light'
         html.setAttribute('data-theme', currentTheme)
       } catch (err) {
-        console.error('[layouts/default] Error applying default theme:', err)
+        // エラーは無視して続行
       }
     }
   } catch (err) {
-    console.error('[layouts/default] Error in onMounted:', err)
+    // エラーは無視して続行
   }
 })
 
 // テーマ切り替え関数
 function toggleTheme() {
   const store = themeStoreInstance.value
-  console.log('[layouts/default] toggleTheme called, themeStoreInstance.value:', store)
 
   if (store) {
     store.toggleTheme()
-    // テーマが変更されたことを確認
-    console.log('[layouts/default] Theme after toggle:', store.theme, 'isDark:', store.isDark)
   } else {
-    console.warn('[layouts/default] themeStoreInstance.value is null, cannot toggle theme')
     // フォールバック: 直接HTMLに適用
     if (typeof window !== 'undefined') {
       const html = document.documentElement
       const currentTheme = html.getAttribute('data-theme')
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
       html.setAttribute('data-theme', newTheme)
-      console.log('[layouts/default] Applied theme directly to HTML:', newTheme)
       // localStorageにも保存
       localStorage.setItem('theme', newTheme)
     }

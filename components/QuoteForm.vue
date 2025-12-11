@@ -153,7 +153,6 @@ function updateTagsInput(event: Event) {
 
 // サブミットハンドラ（EventEmitterでvalueのみを親に投げる）
 function handleSubmit() {
-  console.log('[QuoteForm] handleSubmit called')
   // バリデーション：テキストが空の場合は送信しない
   const text = props.modelValue.text || ''
   const trimmedText = text.trim()
@@ -170,7 +169,6 @@ function handleSubmit() {
         : undefined,
     tags: props.modelValue.tags || [],
   }
-  console.log('[QuoteForm] Emitting submit event with:', formValue)
   emit('submit', formValue)
 }
 
@@ -243,19 +241,15 @@ onMounted(async () => {
             return authorsRef.value || []
           },
           (newAuthors) => {
-            console.log('[QuoteForm] authors watch triggered, newAuthors:', newAuthors?.length)
             if (newAuthors && Array.isArray(newAuthors)) {
               authors.value = [...newAuthors] as Author[]
-              console.log('[QuoteForm] authors.value updated:', authors.value.length)
             }
           },
           { immediate: true }
         )
 
         // 著者一覧を読み込む
-        console.log('[QuoteForm] Loading authors...')
         await authorsComposable.value.loadAuthors()
-        console.log('[QuoteForm] loadAuthors completed')
 
         // loadAuthors後、少し待ってからauthorsを確認して更新
         await nextTick()
@@ -266,35 +260,30 @@ onMounted(async () => {
             readonly Author[]
           >
           const currentAuthors = authorsRef.value || []
-          console.log('[QuoteForm] currentAuthors after loadAuthors:', currentAuthors.length)
           if (currentAuthors.length > 0) {
             authors.value = [...currentAuthors] as Author[]
-            console.log('[QuoteForm] authors.value set after loadAuthors:', authors.value.length)
           } else {
             // まだ空の場合は、もう少し待ってから再確認
             await new Promise((resolve) => setTimeout(resolve, 200))
             const retryAuthors = authorsRef.value || []
             if (retryAuthors.length > 0) {
               authors.value = [...retryAuthors] as Author[]
-              console.log('[QuoteForm] authors.value set after retry:', authors.value.length)
             }
           }
         }
       }
     } catch (err) {
-      console.error('[QuoteForm] Error initializing authors composable:', err)
+      // エラーは無視して続行
     }
   } else {
-    console.warn('[QuoteForm] Pinia is not initialized, fetching authors directly from API')
     // Piniaが初期化されていない場合、APIから直接取得
     try {
       const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
       if (fetchedAuthors.value && fetchedAuthors.value.length > 0) {
         authors.value = fetchedAuthors.value
-        console.log('[QuoteForm] authors.value set from API:', authors.value.length)
       }
     } catch (err) {
-      console.error('[QuoteForm] Error fetching authors from API:', err)
+      // エラーは無視して続行
     }
   }
 

@@ -23,7 +23,6 @@ export default defineNuxtPlugin({
     }
 
     if (!pinia) {
-      console.warn('[migrate-authors] Pinia is not initialized, skipping migration')
       return
     }
 

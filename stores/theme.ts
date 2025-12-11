@@ -45,19 +45,15 @@ export const useThemeStore = defineStore(
 
     function toggleTheme() {
       const newTheme = theme.value === 'dark' ? 'light' : 'dark'
-      console.log('[theme store] Toggling theme from', theme.value, 'to', newTheme)
       theme.value = newTheme
       // 確実に適用するため、直接applyThemeを呼び出す
       applyTheme(newTheme)
-      console.log('[theme store] Theme applied:', newTheme)
     }
 
     function setTheme(newTheme: 'light' | 'dark') {
-      console.log('[theme store] Setting theme to', newTheme)
       theme.value = newTheme
       // 確実に適用するため、直接applyThemeを呼び出す
       applyTheme(newTheme)
-      console.log('[theme store] Theme applied:', newTheme)
     }
 
     const isDark = computed(() => theme.value === 'dark')

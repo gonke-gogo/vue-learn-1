@@ -78,5 +78,6 @@ module.exports = {
         varsIgnorePattern: '^_',
       },
     ],
+    'no-console': 'error', // console.logを禁止
   },
 }
