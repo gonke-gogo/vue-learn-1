@@ -41,6 +41,8 @@ export const useSearchStore = defineStore(
     }
   },
   {
-    persist: true, // ← これだけでOK
+    persist: {
+      storage: piniaPluginPersistedstate.sessionStorage(),
+    },
   }
 )

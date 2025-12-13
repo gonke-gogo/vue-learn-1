@@ -103,7 +103,7 @@ const route = useRoute()
 const searchStore = ref<ReturnType<typeof useSearchStore> | null>(null)
 const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
 
-// 検索クエリをローカルのrefとして定義（SSR対応）
+// 検索クエリはグローバルステートから取得（onMountedで初期化）
 const searchQuery = ref('')
 const activeSearchQuery = ref('')
 
@@ -335,21 +335,22 @@ onMounted(async () => {
     return
   }
 
-  // ストアの検索クエリとローカルのrefを同期
+  // ストアの検索クエリをローカルのrefに同期（グローバルステートから取得）
   if (searchStore.value) {
     const storeRefs = storeToRefs(searchStore.value)
-    // ストアの値をローカルのrefに反映
+
+    // 初期値を設定（セッションストレージから復元された値）
     searchQuery.value = storeRefs.searchQuery.value
     activeSearchQuery.value = storeRefs.activeSearchQuery.value
 
-    // ローカルのrefの変更をストアに反映
+    // ローカルのrefの変更をストアに反映（グローバルステートに保存）
     watch(searchQuery, (newValue) => {
       if (searchStore.value) {
         searchStore.value.setSearchQuery(newValue)
       }
     })
 
-    // ストアの変更をローカルのrefに反映
+    // ストアの変更をローカルのrefに反映（他のページから変更された場合など）
     watch(
       () => storeRefs.searchQuery.value,
       (newValue) => {
