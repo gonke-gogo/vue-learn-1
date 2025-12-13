@@ -28,39 +28,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { getActivePinia } from 'pinia'
+import { computed, onMounted, ref } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 
-// テーマストアをrefで管理（リアクティブにする）
-const themeStoreInstance = ref<ReturnType<typeof useThemeStore> | null>(null)
-
-// Piniaが初期化されるまで待ってからストアを取得
-const getThemeStore = (): ReturnType<typeof useThemeStore> | null => {
-  if (themeStoreInstance.value) {
-    return themeStoreInstance.value
-  }
-
-  try {
-    const pinia = getActivePinia()
-    if (pinia) {
-      themeStoreInstance.value = useThemeStore()
-      return themeStoreInstance.value
-    }
-  } catch (err) {
-    // エラーは無視して続行
-  }
-
-  return null
-}
+// テーマストアをrefで管理（SSR対応）
+const themeStore = ref<ReturnType<typeof useThemeStore> | null>(null)
 
 // クライアントサイドでテーマを初期化
-onMounted(async () => {
+onMounted(() => {
   if (typeof window === 'undefined') return
 
   try {
-    await nextTick()
-
     // まずlocalStorageからテーマを読み込んでHTMLに適用（persistプラグインが復元する前に適用）
     try {
       const savedThemeStore = localStorage.getItem('theme-store')
@@ -87,32 +65,17 @@ onMounted(async () => {
       // エラーは無視して続行
     }
 
-    // Piniaが初期化されるまで待つ（最大40回、50ms間隔 = 2秒）
-    for (let i = 0; i < 40; i++) {
-      const store = getThemeStore()
-      if (store) {
-        // ストアのwatchで自動的に適用されるが、念のため初期化
-        try {
-          const html = document.documentElement
-          html.setAttribute('data-theme', store.theme)
-        } catch (err) {
-          // エラーは無視して続行
-        }
-        break
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50))
-    }
+    // ストアを初期化（クライアントサイドでのみ）
+    themeStore.value = useThemeStore()
 
-    // 初期化に失敗した場合でも、デフォルトのテーマを適用
-    const store = getThemeStore()
-    if (!store) {
-      try {
-        const html = document.documentElement
-        const currentTheme = html.getAttribute('data-theme') || 'light'
-        html.setAttribute('data-theme', currentTheme)
-      } catch (err) {
-        // エラーは無視して続行
+    // ストアのwatchで自動的に適用されるが、念のため初期化
+    try {
+      const html = document.documentElement
+      if (themeStore.value) {
+        html.setAttribute('data-theme', themeStore.value.theme)
       }
+    } catch (err) {
+      // エラーは無視して続行
     }
   } catch (err) {
     // エラーは無視して続行
@@ -121,10 +84,8 @@ onMounted(async () => {
 
 // テーマ切り替え関数
 function toggleTheme() {
-  const store = themeStoreInstance.value
-
-  if (store) {
-    store.toggleTheme()
+  if (themeStore.value) {
+    themeStore.value.toggleTheme()
   } else {
     // フォールバック: 直接HTMLに適用
     if (typeof window !== 'undefined') {
@@ -138,17 +99,16 @@ function toggleTheme() {
   }
 }
 
-// テーマの状態（computed）- themeStoreInstanceのisDarkに直接依存
+// テーマの状態（computed）
 const isDark = computed(() => {
   // SSR時は常にfalseを返す（クライアントサイドで更新される）
   if (typeof window === 'undefined') {
     return false
   }
 
-  const store = themeStoreInstance.value
-  if (store) {
-    // store.isDarkはcomputedなので、リアクティブに更新される
-    return store.isDark
+  // store.isDarkはcomputedなので、リアクティブに更新される
+  if (themeStore.value) {
+    return themeStore.value.isDark
   }
 
   // Piniaが初期化されていない場合は、HTMLのdata-theme属性を確認

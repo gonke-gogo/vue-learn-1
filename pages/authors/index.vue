@@ -33,9 +33,8 @@
 </template>
 
 <script setup lang="ts">
-import { getActivePinia } from 'pinia'
 import type { ComputedRef } from 'vue'
-import { computed, nextTick } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import { useQuotes } from '@/composables/useQuotes'
 import { useAuthors } from '@/composables/useAuthors'
 import { useQuotesStore } from '@/stores/quotes'
@@ -49,7 +48,7 @@ const router = useRouter()
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 
-// Piniaストアとcomposablesの参照（クライアントサイドでのみ初期化）
+// Piniaストアとcomposablesをrefで管理（SSR対応）
 const quotesStore = ref<ReturnType<typeof useQuotesStore> | null>(null)
 const authorsStore = ref<ReturnType<typeof useAuthorsStore> | null>(null)
 const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
@@ -162,29 +161,21 @@ onMounted(async () => {
   // Piniaが初期化されるまで待つ
   await nextTick()
 
-  let pinia = getActivePinia()
-  if (!pinia) {
-    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
-    for (let i = 0; i < 20; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      pinia = getActivePinia()
-      if (pinia) break
-    }
+  // Piniaが初期化されるまで待つ（最大20回、50ms間隔）
+  // eslint-disable-next-line no-undef
+  const nuxtApp = useNuxtApp()
+  let retryCount = 0
+  while (!nuxtApp.$pinia && retryCount < 20) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    retryCount++
   }
 
-  if (!pinia) {
-    // Piniaが初期化されていない場合でも、initialQuotesとinitialAuthorsを使用
-    if (initialQuotes.value.length > 0) {
-      quotes.value = initialQuotes.value
-    }
-    if (initialAuthors.value.length > 0) {
-      authors.value = initialAuthors.value
-    }
+  // ストアとcomposableを初期化（クライアントサイドでのみ）
+  if (!nuxtApp.$pinia) {
     return
   }
 
   try {
-    // Piniaが初期化された後にストアとcomposablesを呼び出す
     quotesStore.value = useQuotesStore()
     authorsStore.value = useAuthorsStore()
     quotesComposable.value = useQuotes()
@@ -294,13 +285,19 @@ onMounted(async () => {
     }
 
     // quotesが空の場合、ストアから読み込む
-    if (quotesStore.value && quotesStore.value.quotes.length === 0 && quotes.value.length === 0) {
-      await quotesStore.value.loadQuotes()
+    const quotesStoreInstance = quotesStore.value
+    if (
+      quotesStoreInstance &&
+      quotesStoreInstance.quotes.length === 0 &&
+      quotes.value.length === 0
+    ) {
+      await quotesStoreInstance.loadQuotes()
     }
 
     // authorsが空の場合、ストアから読み込む
-    if (authorsStore.value && authors.value.length === 0) {
-      await authorsStore.value.loadAuthors()
+    const authorsStoreInstance = authorsStore.value
+    if (authorsStoreInstance && authors.value.length === 0) {
+      await authorsStoreInstance.loadAuthors()
     }
 
     // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）

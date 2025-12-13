@@ -89,8 +89,9 @@
 </template>
 
 <script setup lang="ts">
-import { getActivePinia } from 'pinia'
-import { computed, nextTick } from 'vue'
+import { computed, watch, nextTick } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSearchStore } from '@/stores/search'
 import { useAuthors } from '@/composables/useAuthors'
 import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
@@ -98,11 +99,16 @@ import { searchQuotes as searchQuotesUtil } from '@/utils/quote-utils'
 
 const route = useRoute()
 
+// 検索ストアとcomposableをrefで管理（SSR対応）
+const searchStore = ref<ReturnType<typeof useSearchStore> | null>(null)
+const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
+
+// 検索クエリをローカルのrefとして定義（SSR対応）
+const searchQuery = ref('')
+const activeSearchQuery = ref('')
+
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes, refresh: refreshQuotes } = await useFetch<Quote[]>('/api/quotes')
-
-// authorsComposableのみ初期化（getAuthorNameで使用）
-const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
 
 // サーバーサイドで取得したデータを一時的に保持
 const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
@@ -111,10 +117,6 @@ const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
 const quotes = ref<Quote[]>(initialQuotes.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
-
-// 検索機能
-const searchQuery = ref('') // 入力用のクエリ
-const activeSearchQuery = ref('') // 実際に検索に使用するクエリ
 
 const filteredQuotes = computed(() => {
   if (!activeSearchQuery.value.trim()) {
@@ -129,22 +131,6 @@ const filteredQuotes = computed(() => {
 const displayedQuotes = computed(() => {
   return filteredQuotes.value
 })
-
-// 検索を実行（Enterキーまたはボタンクリック時）
-const executeSearch = () => {
-  // 空文字の場合は全件表示（検索クエリをクリア）
-  if (!searchQuery.value.trim()) {
-    activeSearchQuery.value = ''
-  } else {
-    activeSearchQuery.value = searchQuery.value.trim()
-  }
-}
-
-// 検索をクリア
-const clearSearch = () => {
-  searchQuery.value = ''
-  activeSearchQuery.value = ''
-}
 
 // fetchedQuotesが変更されたらquotesを更新
 watch(
@@ -165,6 +151,29 @@ const getAuthorName = (quote: Quote): string | undefined => {
     return author?.name
   }
   return quote.author
+}
+
+// 検索を実行（Enterキーまたはボタンクリック時）
+const executeSearch = () => {
+  if (!searchQuery.value.trim()) {
+    activeSearchQuery.value = ''
+  } else {
+    activeSearchQuery.value = searchQuery.value.trim()
+  }
+  // ストアが初期化されている場合は、ストアにも反映
+  if (searchStore.value) {
+    searchStore.value.executeSearch()
+  }
+}
+
+// 検索をクリア
+const clearSearch = () => {
+  searchQuery.value = ''
+  activeSearchQuery.value = ''
+  // ストアが初期化されている場合は、ストアにも反映
+  if (searchStore.value) {
+    searchStore.value.clearSearch()
+  }
 }
 
 const addQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -207,7 +216,8 @@ const removeQuote = async (id: string) => {
   initialQuotes.value = initialQuotes.value.filter((q) => q.id !== id)
 }
 
-const getOrCreateAuthorByName = async (name: string) => {
+// 関数を定義（現在は未使用だが、将来の使用に備えて定義）
+const _getOrCreateAuthorByName = async (name: string) => {
   if (authorsComposable.value) {
     return await authorsComposable.value.getOrCreateAuthorByName(name)
   }
@@ -245,7 +255,7 @@ function resetForm() {
   showAddForm.value = false
 }
 
-function startEdit(quote: Quote) {
+async function startEdit(quote: Quote) {
   editingQuote.value = quote
   // refを使っている場合、.valueでオブジェクト全体を置き換え
   form.value = {
@@ -255,6 +265,8 @@ function startEdit(quote: Quote) {
   }
   // 編集モードの場合は新規追加フォームを非表示にする
   showAddForm.value = false
+  // DOMが更新されるまで待つ
+  await nextTick()
 }
 
 function cancelForm() {
@@ -301,23 +313,56 @@ onMounted(async () => {
   // Piniaが初期化されるまで待つ
   await nextTick()
 
-  let pinia = getActivePinia()
-  if (!pinia) {
-    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
-    for (let i = 0; i < 20; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      pinia = getActivePinia()
-      if (pinia) break
-    }
+  // Piniaが初期化されるまで待つ（最大20回、50ms間隔）
+  // eslint-disable-next-line no-undef
+  const nuxtApp = useNuxtApp()
+  let retryCount = 0
+  while (!nuxtApp.$pinia && retryCount < 20) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    retryCount++
   }
 
-  if (pinia) {
-    // authorsComposableを初期化（getAuthorNameで使用）
-    try {
-      authorsComposable.value = useAuthors()
-    } catch (err) {
-      // Piniaが初期化されていない場合でも続行
-    }
+  // ストアとcomposableを初期化（クライアントサイドでのみ）
+  if (!nuxtApp.$pinia) {
+    return
+  }
+
+  try {
+    searchStore.value = useSearchStore()
+    authorsComposable.value = useAuthors()
+  } catch (err) {
+    // エラーは無視して続行
+    return
+  }
+
+  // ストアの検索クエリとローカルのrefを同期
+  if (searchStore.value) {
+    const storeRefs = storeToRefs(searchStore.value)
+    // ストアの値をローカルのrefに反映
+    searchQuery.value = storeRefs.searchQuery.value
+    activeSearchQuery.value = storeRefs.activeSearchQuery.value
+
+    // ローカルのrefの変更をストアに反映
+    watch(searchQuery, (newValue) => {
+      if (searchStore.value) {
+        searchStore.value.setSearchQuery(newValue)
+      }
+    })
+
+    // ストアの変更をローカルのrefに反映
+    watch(
+      () => storeRefs.searchQuery.value,
+      (newValue) => {
+        searchQuery.value = newValue
+      }
+    )
+
+    watch(
+      () => storeRefs.activeSearchQuery.value,
+      (newValue) => {
+        activeSearchQuery.value = newValue
+      }
+    )
   }
 
   // サーバーサイドで取得したデータをquotesに反映
@@ -375,12 +420,13 @@ onMounted(async () => {
 
   if (quotes.value.length === 0 && authorsComposable.value) {
     // 初期データを投入（クライアントサイドでのみ）
+    const authors = authorsComposable.value
     for (const seed of seedQuotes) {
       try {
         // author文字列からauthorIdを取得または作成
         let authorId: string | undefined = undefined
         if (seed.author) {
-          const author = await authorsComposable.value.getOrCreateAuthorByName(seed.author)
+          const author = await authors.getOrCreateAuthorByName(seed.author)
           authorId = author.id
         }
 
