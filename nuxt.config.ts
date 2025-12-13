@@ -5,7 +5,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-01-01',
   devtools: { enabled: true },
   ssr: process.env.NUXT_DISABLE_SSR !== 'true',
-  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss'],
+  modules: [
+    '@pinia/nuxt', // PiniaのNuxtモジュール（必須）
+    'pinia-plugin-persistedstate/nuxt', // 永続化プラグインのNuxtモジュール
+    '@nuxtjs/tailwindcss',
+  ],
   // Tailwind CSSの設定を最適化
   tailwindcss: {
     exposeConfig: false,
