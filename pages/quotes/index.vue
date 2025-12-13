@@ -100,12 +100,10 @@ import { searchQuotes as searchQuotesUtil } from '@/utils/quote-utils'
 const route = useRoute()
 
 // 検索ストアとcomposableをrefで管理（SSR対応）
-const searchStore = ref<ReturnType<typeof useSearchStore> | null>(null)
+const searchStore = useSearchStore()
 const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
 
-// 検索クエリはグローバルステートから取得（onMountedで初期化）
-const searchQuery = ref('')
-const activeSearchQuery = ref('')
+const { searchQuery, activeSearchQuery } = storeToRefs(searchStore)
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes, refresh: refreshQuotes } = await useFetch<Quote[]>('/api/quotes')
@@ -161,8 +159,8 @@ const executeSearch = () => {
     activeSearchQuery.value = searchQuery.value.trim()
   }
   // ストアが初期化されている場合は、ストアにも反映
-  if (searchStore.value) {
-    searchStore.value.executeSearch()
+  if (searchStore) {
+    searchStore.executeSearch()
   }
 }
 
@@ -171,8 +169,8 @@ const clearSearch = () => {
   searchQuery.value = ''
   activeSearchQuery.value = ''
   // ストアが初期化されている場合は、ストアにも反映
-  if (searchStore.value) {
-    searchStore.value.clearSearch()
+  if (searchStore) {
+    searchStore.clearSearch()
   }
 }
 
@@ -310,60 +308,11 @@ async function handleDelete(id: string) {
 }
 
 onMounted(async () => {
-  // Piniaが初期化されるまで待つ
-  await nextTick()
-
-  // Piniaが初期化されるまで待つ（最大20回、50ms間隔）
-  // eslint-disable-next-line no-undef
-  const nuxtApp = useNuxtApp()
-  let retryCount = 0
-  while (!nuxtApp.$pinia && retryCount < 20) {
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    retryCount++
-  }
-
-  // ストアとcomposableを初期化（クライアントサイドでのみ）
-  if (!nuxtApp.$pinia) {
-    return
-  }
-
   try {
-    searchStore.value = useSearchStore()
     authorsComposable.value = useAuthors()
   } catch (err) {
     // エラーは無視して続行
     return
-  }
-
-  // ストアの検索クエリをローカルのrefに同期（グローバルステートから取得）
-  if (searchStore.value) {
-    const storeRefs = storeToRefs(searchStore.value)
-
-    // 初期値を設定（セッションストレージから復元された値）
-    searchQuery.value = storeRefs.searchQuery.value
-    activeSearchQuery.value = storeRefs.activeSearchQuery.value
-
-    // ローカルのrefの変更をストアに反映（グローバルステートに保存）
-    watch(searchQuery, (newValue) => {
-      if (searchStore.value) {
-        searchStore.value.setSearchQuery(newValue)
-      }
-    })
-
-    // ストアの変更をローカルのrefに反映（他のページから変更された場合など）
-    watch(
-      () => storeRefs.searchQuery.value,
-      (newValue) => {
-        searchQuery.value = newValue
-      }
-    )
-
-    watch(
-      () => storeRefs.activeSearchQuery.value,
-      (newValue) => {
-        activeSearchQuery.value = newValue
-      }
-    )
   }
 
   // サーバーサイドで取得したデータをquotesに反映
