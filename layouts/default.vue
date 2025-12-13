@@ -9,7 +9,7 @@
             <NuxtLink to="/quotes">名言一覧</NuxtLink>
           </div>
           <button class="themeToggle" aria-label="テーマ切替" @click="toggleTheme">
-            {{ isDark ? '☀️' : '🌙' }}
+            {{ isDark ? '🌙' : '☀️' }}
           </button>
         </nav>
       </div>
@@ -28,97 +28,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 
-// テーマストアをrefで管理（SSR対応）
-const themeStore = ref<ReturnType<typeof useThemeStore> | null>(null)
+const themeStore = useThemeStore()
 
-// クライアントサイドでテーマを初期化
-onMounted(() => {
-  if (typeof window === 'undefined') return
+const isDark = computed(() => themeStore.isDark)
 
-  try {
-    // まずlocalStorageからテーマを読み込んでHTMLに適用（persistプラグインが復元する前に適用）
-    try {
-      const savedThemeStore = localStorage.getItem('theme-store')
-      let savedTheme: string | null = null
-
-      if (savedThemeStore) {
-        try {
-          const parsed = JSON.parse(savedThemeStore)
-          savedTheme = parsed.theme
-        } catch {
-          // JSONパースに失敗した場合は無視
-        }
-      }
-
-      if (!savedTheme) {
-        savedTheme = localStorage.getItem('theme')
-      }
-
-      if (savedTheme === 'dark' || savedTheme === 'light') {
-        const html = document.documentElement
-        html.setAttribute('data-theme', savedTheme)
-      }
-    } catch (err) {
-      // エラーは無視して続行
-    }
-
-    // ストアを初期化（クライアントサイドでのみ）
-    themeStore.value = useThemeStore()
-
-    // ストアのwatchで自動的に適用されるが、念のため初期化
-    try {
-      const html = document.documentElement
-      if (themeStore.value) {
-        html.setAttribute('data-theme', themeStore.value.theme)
-      }
-    } catch (err) {
-      // エラーは無視して続行
-    }
-  } catch (err) {
-    // エラーは無視して続行
-  }
-})
-
-// テーマ切り替え関数
 function toggleTheme() {
-  if (themeStore.value) {
-    themeStore.value.toggleTheme()
-  } else {
-    // フォールバック: 直接HTMLに適用
-    if (typeof window !== 'undefined') {
-      const html = document.documentElement
-      const currentTheme = html.getAttribute('data-theme')
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
-      html.setAttribute('data-theme', newTheme)
-      // localStorageにも保存
-      localStorage.setItem('theme', newTheme)
-    }
-  }
+  themeStore.toggleTheme()
 }
-
-// テーマの状態（computed）
-const isDark = computed(() => {
-  // SSR時は常にfalseを返す（クライアントサイドで更新される）
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  // store.isDarkはcomputedなので、リアクティブに更新される
-  if (themeStore.value) {
-    return themeStore.value.isDark
-  }
-
-  // Piniaが初期化されていない場合は、HTMLのdata-theme属性を確認
-  try {
-    const html = document.documentElement
-    return html.getAttribute('data-theme') === 'dark'
-  } catch {
-    return false
-  }
-})
 </script>
 
 <style scoped lang="scss">
