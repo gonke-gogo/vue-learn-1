@@ -52,9 +52,8 @@
 </template>
 
 <script setup lang="ts">
-import { getActivePinia } from 'pinia'
 import type { ComputedRef } from 'vue'
-import { nextTick } from 'vue'
+import { nextTick, watch } from 'vue'
 import { useQuotes } from '@/composables/useQuotes'
 import { useQuotesStore } from '@/stores/quotes'
 import type { Quote } from '@/types/quote'
@@ -65,7 +64,7 @@ const router = useRouter()
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
 
-// PiniaストアとuseQuotes()の参照（クライアントサイドでのみ初期化）
+// PiniaストアとuseQuotes()をrefで管理（SSR対応）
 const store = ref<ReturnType<typeof useQuotesStore> | null>(null)
 const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
 
@@ -77,26 +76,26 @@ const quote = ref<Quote | null>(null)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
-// 関数を定義（onMounted内で更新）
-const getQuote = (id: string): Quote | undefined => {
+// 関数を定義（現在は未使用だが、将来の使用に備えて定義）
+const _getQuote = (id: string): Quote | undefined => {
   if (quotesComposable.value) {
-    return quotesComposable.value.getQuote(id)
+    const foundQuote = quotesComposable.value.getQuote(id)
+    if (foundQuote) {
+      return foundQuote
+    }
   }
-  // quotesComposableが初期化されていない場合、initialQuotesから検索
+  // quotesComposableから見つからない場合、initialQuotesから検索
   return initialQuotes.value.find((q) => q.id === id)
 }
 
-const updateQuote = async (
+const _updateQuote = async (
   id: string,
   updates: Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>
 ) => {
   if (quotesComposable.value) {
     return await quotesComposable.value.updateQuote(id, updates)
   }
-  if (store.value) {
-    return await store.value.updateQuote(id, updates)
-  }
-  throw new Error('quotesComposable and store are not initialized')
+  throw new Error('quotesComposable is not initialized')
 }
 
 const removeQuote = async (id: string) => {
@@ -191,56 +190,17 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
     return
   }
 
-  // storeとquotesComposableが初期化されるまで待つ（最大10回、100ms間隔）
-  let retryCount = 0
-  while (!quotesComposable.value && !store.value && retryCount < 10) {
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    retryCount++
-  }
-
-  // それでも初期化されていない場合、APIを直接呼び出す
-  if (!quotesComposable.value && !store.value) {
-    isSaving.value = true
-    try {
-      // APIを直接呼び出して更新
-      const { data: updatedQuote } = await useFetch<Quote>(`/api/quotes/${quote.value.id}`, {
+  isSaving.value = true
+  try {
+    // quotesComposableが初期化されている場合はそれを使用、そうでなければAPIを直接呼び出す
+    if (quotesComposable.value) {
+      await quotesComposable.value.updateQuote(quote.value.id, formValue)
+    } else {
+      // ストアが初期化されていない場合、APIを直接呼び出す
+      await $fetch<Quote>(`/api/quotes/${quote.value.id}`, {
         method: 'PUT',
         body: formValue,
       })
-
-      if (updatedQuote.value) {
-        quote.value = updatedQuote.value
-        // initialQuotesも更新
-        const index = initialQuotes.value.findIndex((q) => q.id === quote.value?.id)
-        if (index !== -1) {
-          initialQuotes.value[index] = updatedQuote.value
-        }
-      }
-
-      isEditing.value = false
-      const newQuery = { ...route.query }
-      delete newQuery.edit
-      router.push({ query: newQuery })
-    } catch (err) {
-      alert(`更新に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
-    } finally {
-      isSaving.value = false
-    }
-    return
-  }
-
-  isSaving.value = true
-  try {
-    // quotesComposableが利用可能な場合はそれを使用、そうでなければstoreを直接使用
-    if (quotesComposable.value) {
-      await quotesComposable.value.updateQuote(quote.value.id, formValue)
-    } else if (store.value) {
-      await store.value.updateQuote(quote.value.id, formValue)
-      // storeを更新した後、quoteも更新
-      const updatedQuote = store.value.getQuote(quote.value.id)
-      if (updatedQuote) {
-        quote.value = updatedQuote as Quote
-      }
     }
 
     // 最新の状態を取得
@@ -268,16 +228,8 @@ async function handleDelete() {
   if (!quote.value) return
   if (confirm('この名言を削除しますか？')) {
     try {
-      // quotesComposableが初期化されていない場合、APIを直接呼び出す
-      if (!quotesComposable.value && !store.value) {
-        await useFetch(`/api/quotes/${quote.value.id}`, {
-          method: 'DELETE',
-        })
-        router.push('/quotes')
-      } else {
-        await removeQuote(quote.value.id)
-        router.push('/quotes')
-      }
+      await removeQuote(quote.value.id)
+      router.push('/quotes')
     } catch (err) {
       alert(`削除に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
     }
@@ -288,17 +240,17 @@ onMounted(async () => {
   // Piniaが初期化されるまで待つ
   await nextTick()
 
-  let pinia = getActivePinia()
-  if (!pinia) {
-    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
-    for (let i = 0; i < 20; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      pinia = getActivePinia()
-      if (pinia) break
-    }
+  // Piniaが初期化されるまで待つ（最大20回、50ms間隔）
+  // eslint-disable-next-line no-undef
+  const nuxtApp = useNuxtApp()
+  let retryCount = 0
+  while (!nuxtApp.$pinia && retryCount < 20) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    retryCount++
   }
 
-  if (!pinia) {
+  // ストアとcomposableを初期化（クライアントサイドでのみ）
+  if (!nuxtApp.$pinia) {
     // Piniaが初期化されていない場合でも、initialQuotesを使用してquoteを更新
     if (initialQuotes.value.length > 0) {
       const foundQuote = initialQuotes.value.find((q) => q.id === quoteId.value)
@@ -310,7 +262,6 @@ onMounted(async () => {
   }
 
   try {
-    // Piniaが初期化された後にストアとuseQuotes()を呼び出す
     store.value = useQuotesStore()
     quotesComposable.value = useQuotes()
 
@@ -319,8 +270,7 @@ onMounted(async () => {
       // quoteをwatch
       watch(
         () => {
-          if (!quotesComposable.value) return null
-          const foundQuote = quotesComposable.value.getQuote(quoteId.value)
+          const foundQuote = quotesComposable.value?.getQuote(quoteId.value)
           return foundQuote || null
         },
         (newQuote) => {
@@ -376,7 +326,7 @@ onMounted(async () => {
     }
 
     // quoteが見つからない場合、ストアから読み込む
-    if (store.value && !quote.value) {
+    if (!quote.value && store.value) {
       await store.value.loadQuotes()
       // loadQuotes後、quoteを再取得
       if (quotesComposable.value) {

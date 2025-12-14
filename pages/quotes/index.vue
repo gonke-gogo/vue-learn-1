@@ -89,25 +89,24 @@
 </template>
 
 <script setup lang="ts">
-import { getActivePinia } from 'pinia'
-import type { ComputedRef } from 'vue'
-import { computed, nextTick } from 'vue'
-import { useQuotes } from '@/composables/useQuotes'
+import { computed, watch, nextTick } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSearchStore } from '@/stores/search'
 import { useAuthors } from '@/composables/useAuthors'
-import { useQuotesStore } from '@/stores/quotes'
 import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
 import { searchQuotes as searchQuotesUtil } from '@/utils/quote-utils'
 
 const route = useRoute()
 
-// サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
-const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
-
-// PiniaストアとuseQuotes()の参照（クライアントサイドでのみ初期化）
-const store = ref<ReturnType<typeof useQuotesStore> | null>(null)
-const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
+// 検索ストアとcomposableをrefで管理（SSR対応）
+const searchStore = useSearchStore()
 const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
+
+const { searchQuery, activeSearchQuery } = storeToRefs(searchStore)
+
+// サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
+const { data: fetchedQuotes, refresh: refreshQuotes } = await useFetch<Quote[]>('/api/quotes')
 
 // サーバーサイドで取得したデータを一時的に保持
 const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
@@ -117,21 +116,12 @@ const quotes = ref<Quote[]>(initialQuotes.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
-// 検索機能
-const searchQuery = ref('') // 入力用のクエリ
-const activeSearchQuery = ref('') // 実際に検索に使用するクエリ
-
 const filteredQuotes = computed(() => {
   if (!activeSearchQuery.value.trim()) {
     return quotes.value
   }
 
-  // quotesComposableが初期化されている場合はそれを使用、そうでない場合は直接ユーティリティ関数を使用
-  if (quotesComposable.value) {
-    return quotesComposable.value.searchQuotes(activeSearchQuery.value)
-  }
-
-  // quotesComposableが初期化されていない場合でも検索できるように、直接ユーティリティ関数を使用
+  // 直接ユーティリティ関数を使用
   return searchQuotesUtil(quotes.value, activeSearchQuery.value)
 })
 
@@ -139,22 +129,6 @@ const filteredQuotes = computed(() => {
 const displayedQuotes = computed(() => {
   return filteredQuotes.value
 })
-
-// 検索を実行（Enterキーまたはボタンクリック時）
-const executeSearch = () => {
-  // 空文字の場合は全件表示（検索クエリをクリア）
-  if (!searchQuery.value.trim()) {
-    activeSearchQuery.value = ''
-  } else {
-    activeSearchQuery.value = searchQuery.value.trim()
-  }
-}
-
-// 検索をクリア
-const clearSearch = () => {
-  searchQuery.value = ''
-  activeSearchQuery.value = ''
-}
 
 // fetchedQuotesが変更されたらquotesを更新
 watch(
@@ -168,42 +142,80 @@ watch(
   { immediate: true }
 )
 
-// 関数を定義（onMounted内で更新）
+// 関数を定義
 const getAuthorName = (quote: Quote): string | undefined => {
-  if (quotesComposable.value) {
-    return quotesComposable.value.getAuthorName(quote)
+  if (quote.authorId && authorsComposable.value) {
+    const author = authorsComposable.value.getAuthor(quote.authorId)
+    return author?.name
   }
   return quote.author
 }
 
-const addQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>) => {
-  if (quotesComposable.value) {
-    return await quotesComposable.value.addQuote(quote)
+// 検索を実行（Enterキーまたはボタンクリック時）
+const executeSearch = () => {
+  if (!searchQuery.value.trim()) {
+    activeSearchQuery.value = ''
+  } else {
+    activeSearchQuery.value = searchQuery.value.trim()
   }
-  throw new Error('quotesComposable is not initialized')
+  // ストアが初期化されている場合は、ストアにも反映
+  if (searchStore) {
+    searchStore.executeSearch()
+  }
+}
+
+// 検索をクリア
+const clearSearch = () => {
+  searchQuery.value = ''
+  activeSearchQuery.value = ''
+  // ストアが初期化されている場合は、ストアにも反映
+  if (searchStore) {
+    searchStore.clearSearch()
+  }
+}
+
+const addQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const response = await $fetch<Quote>('/api/quotes', {
+    method: 'POST',
+    body: quote,
+  })
+  // quotesを更新
+  quotes.value = [...quotes.value, response]
+  initialQuotes.value = [...initialQuotes.value, response]
+  return response
 }
 
 const updateQuote = async (
   id: string,
   updates: Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>
 ) => {
-  if (quotesComposable.value) {
-    return await quotesComposable.value.updateQuote(id, updates)
+  const response = await $fetch<Quote>(`/api/quotes/${id}`, {
+    method: 'PUT',
+    body: updates,
+  })
+  // quotesを更新
+  const index = quotes.value.findIndex((q) => q.id === id)
+  if (index !== -1) {
+    quotes.value[index] = response
   }
-  if (store.value) {
-    return await store.value.updateQuote(id, updates)
+  const initialIndex = initialQuotes.value.findIndex((q) => q.id === id)
+  if (initialIndex !== -1) {
+    initialQuotes.value[initialIndex] = response
   }
-  throw new Error('quotesComposable and store are not initialized')
+  return response
 }
 
 const removeQuote = async (id: string) => {
-  if (quotesComposable.value) {
-    return await quotesComposable.value.removeQuote(id)
-  }
-  throw new Error('quotesComposable is not initialized')
+  await $fetch(`/api/quotes/${id}`, {
+    method: 'DELETE',
+  })
+  // quotesから削除
+  quotes.value = quotes.value.filter((q) => q.id !== id)
+  initialQuotes.value = initialQuotes.value.filter((q) => q.id !== id)
 }
 
-const getOrCreateAuthorByName = async (name: string) => {
+// 関数を定義（現在は未使用だが、将来の使用に備えて定義）
+const _getOrCreateAuthorByName = async (name: string) => {
   if (authorsComposable.value) {
     return await authorsComposable.value.getOrCreateAuthorByName(name)
   }
@@ -241,7 +253,7 @@ function resetForm() {
   showAddForm.value = false
 }
 
-function startEdit(quote: Quote) {
+async function startEdit(quote: Quote) {
   editingQuote.value = quote
   // refを使っている場合、.valueでオブジェクト全体を置き換え
   form.value = {
@@ -251,6 +263,8 @@ function startEdit(quote: Quote) {
   }
   // 編集モードの場合は新規追加フォームを非表示にする
   showAddForm.value = false
+  // DOMが更新されるまで待つ
+  await nextTick()
 }
 
 function cancelForm() {
@@ -265,69 +279,17 @@ function handleQuoteClick(quote: Quote) {
 // EventEmitterで受け取ったフォームの値のみを使用（valueのみを親に投げる要件を満たす）
 async function handleSubmit(formValue: { text: string; authorId?: string; tags?: string[] }) {
   try {
+    // authorIdが空文字列の場合はundefinedに変換
+    const requestBody = {
+      ...formValue,
+      authorId:
+        formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
+    }
+
     if (editingQuote.value) {
-      // quotesComposableが初期化されていない場合、APIを直接呼び出す
-      if (!quotesComposable.value && !store.value) {
-        // authorIdが空文字列の場合はundefinedに変換
-        const requestBody = {
-          ...formValue,
-          authorId:
-            formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
-        }
-        const { data: updatedQuote } = await useFetch<Quote>(
-          `/api/quotes/${editingQuote.value.id}`,
-          {
-            method: 'PUT',
-            body: requestBody,
-          }
-        )
-        if (updatedQuote.value) {
-          // quotesを更新
-          const index = quotes.value.findIndex((q) => q.id === editingQuote.value?.id)
-          if (index !== -1) {
-            quotes.value[index] = updatedQuote.value
-          }
-          const initialIndex = initialQuotes.value.findIndex((q) => q.id === editingQuote.value?.id)
-          if (initialIndex !== -1) {
-            initialQuotes.value[initialIndex] = updatedQuote.value
-          }
-        }
-      } else {
-        // authorIdが空文字列の場合はundefinedに変換
-        const requestBody = {
-          ...formValue,
-          authorId:
-            formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
-        }
-        await updateQuote(editingQuote.value.id, requestBody)
-      }
+      await updateQuote(editingQuote.value.id, requestBody)
     } else {
-      // quotesComposableが初期化されていない場合、APIを直接呼び出す
-      if (!quotesComposable.value && !store.value) {
-        // authorIdが空文字列の場合はundefinedに変換
-        const requestBody = {
-          ...formValue,
-          authorId:
-            formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
-        }
-        const { data: newQuote } = await useFetch<Quote>('/api/quotes', {
-          method: 'POST',
-          body: requestBody,
-        })
-        if (newQuote.value) {
-          // quotesに追加
-          quotes.value = [...quotes.value, newQuote.value]
-          initialQuotes.value = [...initialQuotes.value, newQuote.value]
-        }
-      } else {
-        // authorIdが空文字列の場合はundefinedに変換
-        const requestBody = {
-          ...formValue,
-          authorId:
-            formValue.authorId && formValue.authorId.trim() !== '' ? formValue.authorId : undefined,
-        }
-        await addQuote(requestBody)
-      }
+      await addQuote(requestBody)
     }
     resetForm()
   } catch (err) {
@@ -338,17 +300,7 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
 async function handleDelete(id: string) {
   if (confirm('この名言を削除しますか？')) {
     try {
-      // quotesComposableが初期化されていない場合、APIを直接呼び出す
-      if (!quotesComposable.value && !store.value) {
-        await useFetch(`/api/quotes/${id}`, {
-          method: 'DELETE',
-        })
-        // quotesから削除
-        quotes.value = quotes.value.filter((q) => q.id !== id)
-        initialQuotes.value = initialQuotes.value.filter((q) => q.id !== id)
-      } else {
-        await removeQuote(id)
-      }
+      await removeQuote(id)
     } catch (err) {
       alert(`削除に失敗しました: ${err instanceof Error ? err.message : '不明なエラー'}`)
     }
@@ -356,106 +308,28 @@ async function handleDelete(id: string) {
 }
 
 onMounted(async () => {
-  // Piniaが初期化されるまで待つ
-  await nextTick()
-
-  let pinia = getActivePinia()
-  if (!pinia) {
-    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
-    for (let i = 0; i < 20; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      pinia = getActivePinia()
-      if (pinia) break
-    }
-  }
-
-  if (!pinia) {
-    // Piniaが初期化されていない場合でも、initialQuotesを使用してquotesを更新
-    if (initialQuotes.value.length > 0) {
-      quotes.value = initialQuotes.value
-    }
-    return
-  }
-
   try {
-    // Piniaが初期化された後にストアとuseQuotes()、useAuthors()を呼び出す
-    store.value = useQuotesStore()
-    quotesComposable.value = useQuotes()
     authorsComposable.value = useAuthors()
-
-    // quotes、isLoading、errorをwatchで更新
-    if (quotesComposable.value) {
-      // quotesをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return []
-          const quotesRef = quotesComposable.value.quotes as unknown as ComputedRef<
-            readonly Quote[]
-          >
-          return quotesRef.value
-        },
-        (newQuotes) => {
-          if (newQuotes && newQuotes.length > 0) {
-            quotes.value = [...newQuotes] as Quote[]
-          }
-        },
-        { immediate: true }
-      )
-
-      // isLoadingをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return false
-          const isLoadingRef = quotesComposable.value.isLoading as unknown as ComputedRef<boolean>
-          return isLoadingRef.value
-        },
-        (newIsLoading) => {
-          isLoading.value = newIsLoading
-        },
-        { immediate: true }
-      )
-
-      // errorをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return null
-          const errorRef = quotesComposable.value.error as unknown as ComputedRef<string | null>
-          return errorRef.value
-        },
-        (newError) => {
-          error.value = newError
-        },
-        { immediate: true }
-      )
-    }
-
-    // サーバーサイドで取得したデータをquotesに反映
-    if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
-      quotes.value = fetchedQuotes.value
-    }
-
-    // quotesが空の場合、ストアから読み込む
-    if (store.value && store.value.quotes.length === 0 && quotes.value.length === 0) {
-      await store.value.loadQuotes()
-    }
   } catch (err) {
-    // エラーが発生した場合でも、initialQuotesを使用してquotesを更新
-    if (initialQuotes.value.length > 0) {
-      quotes.value = initialQuotes.value
-    }
+    // エラーは無視して続行
     return
+  }
+
+  // サーバーサイドで取得したデータをquotesに反映
+  if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
+    quotes.value = fetchedQuotes.value
   }
 
   // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
 
   // 既存データでauthorはあるがauthorIdがnullのものを修正
   const quotesToMigrate = quotes.value.filter((quote) => quote.author && !quote.authorId)
-  if (quotesToMigrate.length > 0) {
+  if (quotesToMigrate.length > 0 && authorsComposable.value) {
     for (const quote of quotesToMigrate) {
       if (!quote.author) continue
       try {
         // 著者を取得または作成
-        const author = await getOrCreateAuthorByName(quote.author)
+        const author = await authorsComposable.value.getOrCreateAuthorByName(quote.author)
         // 名言にauthorIdを設定（サーバー側で自動的にauthorフィールドも更新される）
         await updateQuote(quote.id, {
           authorId: author.id,
@@ -465,9 +339,10 @@ onMounted(async () => {
       }
     }
     // データを再取得
-    const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
-    if (refreshedQuotes.value) {
-      quotes.value = refreshedQuotes.value
+    await refreshQuotes()
+    if (fetchedQuotes.value) {
+      quotes.value = fetchedQuotes.value
+      initialQuotes.value = fetchedQuotes.value
     }
   }
 
@@ -486,20 +361,22 @@ onMounted(async () => {
       }
     }
     // データを再取得
-    const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
-    if (refreshedQuotes.value) {
-      quotes.value = refreshedQuotes.value
+    await refreshQuotes()
+    if (fetchedQuotes.value) {
+      quotes.value = fetchedQuotes.value
+      initialQuotes.value = fetchedQuotes.value
     }
   }
 
-  if (quotes.value.length === 0) {
+  if (quotes.value.length === 0 && authorsComposable.value) {
     // 初期データを投入（クライアントサイドでのみ）
+    const authors = authorsComposable.value
     for (const seed of seedQuotes) {
       try {
         // author文字列からauthorIdを取得または作成
         let authorId: string | undefined = undefined
         if (seed.author) {
-          const author = await getOrCreateAuthorByName(seed.author)
+          const author = await authors.getOrCreateAuthorByName(seed.author)
           authorId = author.id
         }
 
@@ -513,9 +390,10 @@ onMounted(async () => {
       }
     }
     // データを再取得
-    const { data: refreshedQuotes } = await useFetch<Quote[]>('/api/quotes')
-    if (refreshedQuotes.value) {
-      quotes.value = refreshedQuotes.value
+    await refreshQuotes()
+    if (fetchedQuotes.value) {
+      quotes.value = fetchedQuotes.value
+      initialQuotes.value = fetchedQuotes.value
     }
   }
 

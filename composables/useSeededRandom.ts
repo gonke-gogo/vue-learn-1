@@ -1,77 +1,55 @@
 /**
- * シード値から決定性のある疑似乱数生成器を提供
- * mulberry32アルゴリズムを使用
+ * saltの値から配列のインデックスを決定して要素を選ぶ
+ *
+ * シンプルな実装：saltの値を配列の長さで割った余りをインデックスとして使う
+ *
+ * 使用例:
+ * ```typescript
+ * const random = useSeededRandom("100")
+ * const quote = random.pick(quotes)  // 名言を選ぶ
+ * ```
+ *
+ * 同じsaltなら、同じ配列からは常に同じ要素が選ばれる
+ * saltを変えると、異なる要素が選ばれる
+ *
+ * @param salt - インデックス決定に使う値（文字列または数値）
+ * @returns 要素選択関数（pick）
  */
-class SeededRandom {
-  private seed: number
-
-  constructor(seed: number) {
-    this.seed = seed
-  }
+export function useSeededRandom(salt: string | number) {
+  // saltを数値に変換
+  const saltValue = typeof salt === 'string' ? parseInt(salt, 10) || 0 : salt
 
   /**
-   * 0以上1未満の乱数を生成
-   */
-  next(): number {
-    let t = (this.seed += 0x6d2b79f5)
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-
-  /**
-   * 0以上max未満の整数を生成
-   */
-  nextInt(max: number): number {
-    return Math.floor(this.next() * max)
-  }
-}
-
-/**
- * 文字列を32bit整数に変換（FNV-1aハッシュ）
- */
-function stringToSeed(str: string): number {
-  let hash = 2166136261
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i)
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)
-  }
-  return hash >>> 0
-}
-
-/**
- * date, saltからシード値を生成
- */
-function generateSeed(date: string, salt?: string): number {
-  const seedStr = `${date}${salt ? `-${salt}` : ''}`
-  return stringToSeed(seedStr)
-}
-
-export function useSeededRandom(date: string, salt?: string) {
-  const seed = generateSeed(date, salt)
-  const rng = new SeededRandom(seed)
-
-  /**
-   * 配列から1つの要素をランダムに選択
+   * 配列から1つの要素を選択
+   *
+   * saltの値を配列の長さで割った余りをインデックスとして使う
+   * 例: salt = 1234, array.length = 10 → 1234 % 10 = 4 → array[4]
+   *
+   * 使用例:
+   * ```typescript
+   * const quotes = ["名言1", "名言2", "名言3"]
+   * const picked = random.pick(quotes)  // saltの値に応じて選ばれる
+   * ```
+   *
+   * @param array - 選択元の配列（読み取り専用）
+   * @returns 選ばれた要素、配列が空の場合はundefined
    */
   function pick<T>(array: readonly T[]): T | undefined {
+    // 配列が空の場合はundefinedを返す
     if (array.length === 0) {
       return undefined
     }
-    const index = rng.nextInt(array.length)
+
+    // saltの値を配列の長さで割った余りをインデックスとして使う
+    // 例: salt = 1234, array.length = 10 → 1234 % 10 = 4
+    const index = saltValue % array.length
+
+    // 計算したインデックスで配列から要素を取得
     return array[index]
   }
 
-  /**
-   * 次の乱数を取得（イテレータ的）
-   */
-  function next(): number {
-    return rng.next()
-  }
-
+  // 外部に公開する関数を返す
   return {
-    pick,
-    next,
-    seed,
+    pick, // 配列から要素を選ぶ関数
   }
 }

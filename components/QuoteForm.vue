@@ -69,9 +69,8 @@
 </template>
 
 <script setup lang="ts">
-import { getActivePinia } from 'pinia'
 import type { ComputedRef } from 'vue'
-import { nextTick, watch } from 'vue'
+import { watch, nextTick } from 'vue'
 import { useAuthors } from '@/composables/useAuthors'
 import type { Author } from '@/types/author'
 
@@ -91,7 +90,7 @@ const props = withDefaults(defineProps<Props>(), {
   isLoading: false,
 })
 
-// authorsとloadAuthorsをrefとして定義（onMounted内で初期化）
+// authorsComposableをrefで管理（SSR対応）
 const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
 const authors = ref<Author[]>([])
 
@@ -194,8 +193,11 @@ watch(
       // 著者IDが変更された場合
       if (oldValue.authorId !== newValue.authorId) {
         // 著者IDが変更された場合、著者一覧を再読み込み（必要に応じて）
-        if (newValue.authorId && !oldValue.authorId && authorsComposable.value) {
-          authorsComposable.value.loadAuthors()
+        if (newValue.authorId && !oldValue.authorId) {
+          const authors = authorsComposable.value
+          if (authors) {
+            authors.loadAuthors()
+          }
         }
       }
 
@@ -215,74 +217,61 @@ onMounted(async () => {
   // Piniaが初期化されるまで待つ
   await nextTick()
 
-  let pinia = getActivePinia()
-  if (!pinia) {
-    // Piniaが初期化されるまで少し待つ（最大20回、50ms間隔）
-    for (let i = 0; i < 20; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      pinia = getActivePinia()
-      if (pinia) break
-    }
+  // Piniaが初期化されるまで待つ（最大20回、50ms間隔）
+  // eslint-disable-next-line no-undef
+  const nuxtApp = useNuxtApp()
+  let retryCount = 0
+  while (!nuxtApp.$pinia && retryCount < 20) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    retryCount++
   }
 
-  if (pinia) {
-    try {
-      // Piniaが初期化された後にuseAuthors()を呼び出す
-      authorsComposable.value = useAuthors()
-
-      // authorsをwatchで更新
-      if (authorsComposable.value) {
-        watch(
-          () => {
-            if (!authorsComposable.value) return []
-            const authorsRef = authorsComposable.value.authors as unknown as ComputedRef<
-              readonly Author[]
-            >
-            return authorsRef.value || []
-          },
-          (newAuthors) => {
-            if (newAuthors && Array.isArray(newAuthors)) {
-              authors.value = [...newAuthors] as Author[]
-            }
-          },
-          { immediate: true }
-        )
-
-        // 著者一覧を読み込む
-        await authorsComposable.value.loadAuthors()
-
-        // loadAuthors後、少し待ってからauthorsを確認して更新
-        await nextTick()
-        await new Promise((resolve) => setTimeout(resolve, 100)) // データが反映されるまで少し待つ
-
-        if (authorsComposable.value) {
-          const authorsRef = authorsComposable.value.authors as unknown as ComputedRef<
-            readonly Author[]
-          >
-          const currentAuthors = authorsRef.value || []
-          if (currentAuthors.length > 0) {
-            authors.value = [...currentAuthors] as Author[]
-          } else {
-            // まだ空の場合は、もう少し待ってから再確認
-            await new Promise((resolve) => setTimeout(resolve, 200))
-            const retryAuthors = authorsRef.value || []
-            if (retryAuthors.length > 0) {
-              authors.value = [...retryAuthors] as Author[]
-            }
-          }
-        }
-      }
-    } catch (err) {
-      // エラーは無視して続行
-    }
-  } else {
+  // composableを初期化（クライアントサイドでのみ）
+  if (!nuxtApp.$pinia) {
     // Piniaが初期化されていない場合、APIから直接取得
     try {
       const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
       if (fetchedAuthors.value && fetchedAuthors.value.length > 0) {
         authors.value = fetchedAuthors.value
       }
-    } catch (err) {
+    } catch (fetchErr) {
+      // エラーは無視して続行
+    }
+    return
+  }
+
+  try {
+    authorsComposable.value = useAuthors()
+
+    // authorsをwatchで更新
+    if (authorsComposable.value) {
+      watch(
+        () => {
+          if (!authorsComposable.value) return []
+          const authorsRef = authorsComposable.value.authors as unknown as ComputedRef<
+            readonly Author[]
+          >
+          return authorsRef.value || []
+        },
+        (newAuthors) => {
+          if (newAuthors && Array.isArray(newAuthors)) {
+            authors.value = [...newAuthors] as Author[]
+          }
+        },
+        { immediate: true }
+      )
+
+      // 著者一覧を読み込む
+      await authorsComposable.value.loadAuthors()
+    }
+  } catch (err) {
+    // エラーが発生した場合、APIから直接取得
+    try {
+      const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
+      if (fetchedAuthors.value && fetchedAuthors.value.length > 0) {
+        authors.value = fetchedAuthors.value
+      }
+    } catch (fetchErr) {
       // エラーは無視して続行
     }
   }
