@@ -61,13 +61,11 @@
           v-else
           class="quoteItem"
           :[dynamicAttr]="quote.id"
-          @[dynamicEvent]="handleQuoteClick(quote as Quote)"
+          @[dynamicEvent]="handleQuoteClick(quote)"
         >
           <div class="quoteContent">
             <p class="quoteText">{{ quote.text }}</p>
-            <p v-if="getAuthorName(quote as Quote)" class="quoteAuthor">
-              — {{ getAuthorName(quote as Quote) }}
-            </p>
+            <p v-if="getAuthorName(quote)" class="quoteAuthor">— {{ getAuthorName(quote) }}</p>
             <div v-if="quote.tags && quote.tags.length > 0" class="tags">
               <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
             </div>
@@ -77,7 +75,7 @@
           </div>
           <div class="quoteActions">
             <NuxtLink :to="`/quotes/${quote.id}`" class="buttonSmall" @click.stop> 詳細 </NuxtLink>
-            <button class="buttonSmall" @click.stop="startEdit(quote as Quote)">編集</button>
+            <button class="buttonSmall" @click.stop="startEdit(quote)">編集</button>
             <button class="buttonSmall buttonDanger" @click.stop="handleDelete(quote.id)">
               削除
             </button>
@@ -229,10 +227,8 @@ const editingQuote = ref<Quote | null>(null)
 // 動的属性名: data-quote-id属性を動的に設定
 const dynamicAttr = ref('data-quote-id')
 // 動的イベント名: タッチデバイスかどうかでイベントを切り替え（実行時に動的に決定）
-const dynamicEvent = computed(() => {
-  // タッチデバイスの場合はタッチイベント、それ以外はダブルクリック
-  return 'ontouchstart' in window ? 'touchstart' : 'dblclick'
-})
+const dynamicEvent =
+  typeof window !== 'undefined' && 'ontouchstart' in window ? 'touchstart' : 'dblclick'
 
 // フォームの値（双方向バインディング用）
 // refを使った例：v-modelがそのまま使える
@@ -402,7 +398,7 @@ onMounted(async () => {
   if (editId) {
     const quote = quotes.value.find((q) => q.id === editId)
     if (quote) {
-      startEdit(quote as Quote)
+      startEdit(quote)
     }
   }
 })
