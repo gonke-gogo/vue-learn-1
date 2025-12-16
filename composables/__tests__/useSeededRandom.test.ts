@@ -1,77 +1,98 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useSeededRandom } from '../useSeededRandom'
 
 describe('useSeededRandom', () => {
-  it('同じシードで同じ結果を返す（決定性）', () => {
-    const date = '2024-01-01'
-    const array = ['a', 'b', 'c', 'd', 'e']
-
-    const random1 = useSeededRandom(date)
-    const random2 = useSeededRandom(date)
-
-    const result1 = random1.pick(array)
-    const result2 = random2.pick(array)
-
-    expect(result1).toBe(result2)
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('異なるsaltで異なる結果を返す可能性がある', () => {
-    const array = ['a', 'b', 'c', 'd', 'e']
-
-    const random1 = useSeededRandom('2024-01-01', 'salt1')
-    const random2 = useSeededRandom('2024-01-01', 'salt2')
-
-    const _result1 = random1.pick(array)
-    const _result2 = random2.pick(array)
-
-    // 異なるsaltで異なる結果になる可能性が高い（確率的に）
-    // ただし、偶然同じになる可能性もあるため、複数回試行
-    let allSame = true
-    for (let i = 0; i < 10; i++) {
-      const r1 = useSeededRandom('2024-01-01', `salt1-${i}`)
-      const r2 = useSeededRandom('2024-01-01', `salt2-${i}`)
-      if (r1.pick(array) !== r2.pick(array)) {
-        allSame = false
-        break
-      }
-    }
-    expect(allSame).toBe(false)
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  it('saltパラメータが結果に影響する', () => {
-    const date = '2024-01-01'
-    const array = ['a', 'b', 'c', 'd', 'e']
+  describe('基本的な動作', () => {
+    it('同じsaltで同じ結果を返す（決定性）', () => {
+      const salt = '100'
+      const array = ['a', 'b', 'c', 'd', 'e']
 
-    const random1 = useSeededRandom(date, 'salt1')
-    const random2 = useSeededRandom(date, 'salt2')
+      const random1 = useSeededRandom(salt)
+      const random2 = useSeededRandom(salt)
 
-    const result1 = random1.pick(array)
-    const result2 = random2.pick(array)
+      const result1 = random1.pick(array)
+      const result2 = random2.pick(array)
 
-    expect(result1).not.toBe(result2)
+      expect(result1).toBe(result2)
+    })
+
+    it('空配列でundefinedを返す', () => {
+      const random = useSeededRandom('100')
+      const result = random.pick([])
+      expect(result).toBeUndefined()
+    })
+
+    it('数値のsaltを受け取れる', () => {
+      const array = ['a', 'b', 'c']
+      const random = useSeededRandom(123)
+      const result = random.pick(array)
+      expect(result).toBeDefined()
+      expect(array).toContain(result)
+    })
+
+    it('文字列のsaltを受け取れる', () => {
+      const array = ['a', 'b', 'c']
+      const random = useSeededRandom('123')
+      const result = random.pick(array)
+      expect(result).toBeDefined()
+      expect(array).toContain(result)
+    })
+
+    it('数値に変換できない文字列の場合は0として扱う', () => {
+      const array = ['a', 'b', 'c']
+      const random1 = useSeededRandom('invalid')
+      const random2 = useSeededRandom(0)
+
+      const result1 = random1.pick(array)
+      const result2 = random2.pick(array)
+
+      expect(result1).toBe(result2)
+    })
+
+    it('配列のインデックスが正しく計算される', () => {
+      const array = ['a', 'b', 'c', 'd', 'e']
+      // salt = 7, array.length = 5 → 7 % 5 = 2 → array[2] = 'c'
+      const random = useSeededRandom(7)
+      const result = random.pick(array)
+      expect(result).toBe('c')
+    })
+
+    it('大きなsalt値でも正しく動作する', () => {
+      const array = ['a', 'b', 'c']
+      // salt = 1000, array.length = 3 → 1000 % 3 = 1 → array[1] = 'b'
+      const random = useSeededRandom(1000)
+      const result = random.pick(array)
+      expect(result).toBe('b')
+    })
   })
 
-  it('空配列でundefinedを返す', () => {
-    const random = useSeededRandom('2024-01-01')
-    const result = random.pick([])
-    expect(result).toBeUndefined()
-  })
+  describe('mock/spyを使ったテスト', () => {
+    it('parseIntが呼ばれることを確認（spy）', () => {
+      const parseIntSpy = vi.spyOn(global, 'parseInt')
 
-  it('next()で0以上1未満の値を返す', () => {
-    const random = useSeededRandom('2024-01-01')
-    for (let i = 0; i < 100; i++) {
-      const value = random.next()
-      expect(value).toBeGreaterThanOrEqual(0)
-      expect(value).toBeLessThan(1)
-    }
-  })
+      useSeededRandom('123')
 
-  it('同じシードでnext()が同じシーケンスを返す', () => {
-    const random1 = useSeededRandom('2024-01-01')
-    const random2 = useSeededRandom('2024-01-01')
+      expect(parseIntSpy).toHaveBeenCalledTimes(1)
+      expect(parseIntSpy).toHaveBeenCalledWith('123', 10)
+      parseIntSpy.mockRestore()
+    })
 
-    for (let i = 0; i < 10; i++) {
-      expect(random1.next()).toBe(random2.next())
-    }
+    it('文字列のsaltでparseIntが呼ばれることを確認（spy）', () => {
+      const parseIntSpy = vi.spyOn(global, 'parseInt')
+
+      const random = useSeededRandom('456')
+      random.pick(['a', 'b', 'c'])
+
+      expect(parseIntSpy).toHaveBeenCalledWith('456', 10)
+      parseIntSpy.mockRestore()
+    })
   })
 })

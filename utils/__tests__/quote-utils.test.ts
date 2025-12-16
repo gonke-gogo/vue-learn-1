@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { searchQuotes, filterByTags, sortQuotes } from '../quote-utils'
 import type { Quote } from '@/types/quote'
 
@@ -199,6 +199,75 @@ describe('quote-utils', () => {
       const result = sortQuotes(singleQuote)
       expect(result).toHaveLength(1)
       expect(result[0].text).toBe('単一の名言')
+    })
+  })
+
+  describe('mock/spyを使ったテスト例', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('Array.prototype.filterが呼ばれることを確認（spy）', () => {
+      const quotes: Quote[] = [
+        createMockQuote('テスト名言1', '著者1'),
+        createMockQuote('テスト名言2', '著者2'),
+      ]
+      const filterSpy = vi.spyOn(Array.prototype, 'filter')
+
+      searchQuotes(quotes, 'テスト')
+
+      expect(filterSpy).toHaveBeenCalled()
+      filterSpy.mockRestore()
+    })
+
+    it('Array.prototype.sortが呼ばれることを確認（spy）', () => {
+      const quotes: Quote[] = [
+        createMockQuote('名言1', '著者1', [], '2024-01-01T00:00:00Z'),
+        createMockQuote('名言2', '著者2', [], '2024-01-02T00:00:00Z'),
+      ]
+      const sortSpy = vi.spyOn(Array.prototype, 'sort')
+
+      sortQuotes(quotes)
+
+      expect(sortSpy).toHaveBeenCalled()
+      sortSpy.mockRestore()
+    })
+
+    it('String.prototype.toLowerCaseが呼ばれることを確認（spy）', () => {
+      const quotes: Quote[] = [createMockQuote('Hello World', 'Author')]
+      const toLowerCaseSpy = vi.spyOn(String.prototype, 'toLowerCase')
+
+      searchQuotes(quotes, 'hello')
+
+      expect(toLowerCaseSpy).toHaveBeenCalled()
+      toLowerCaseSpy.mockRestore()
+    })
+
+    it('Dateコンストラクタが呼ばれることを確認（spy）', () => {
+      const quotes: Quote[] = [
+        createMockQuote('名言1', '著者1', [], '2024-01-01T00:00:00Z'),
+        createMockQuote('名言2', '著者2', [], '2024-01-02T00:00:00Z'),
+      ]
+      const dateSpy = vi.spyOn(global, 'Date')
+
+      sortQuotes(quotes)
+
+      expect(dateSpy).toHaveBeenCalled()
+      dateSpy.mockRestore()
+    })
+
+    it('Array.prototype.someが呼ばれることを確認（spy）', () => {
+      const quotes: Quote[] = [createMockQuote('名言1', '著者1', ['タグ1', 'タグ2'])]
+      const someSpy = vi.spyOn(Array.prototype, 'some')
+
+      filterByTags(quotes, ['タグ1'])
+
+      expect(someSpy).toHaveBeenCalled()
+      someSpy.mockRestore()
     })
   })
 })
