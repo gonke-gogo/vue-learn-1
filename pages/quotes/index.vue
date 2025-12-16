@@ -102,15 +102,11 @@ const searchStore = useSearchStore()
 const { searchQuery, activeSearchQuery } = storeToRefs(searchStore)
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
-const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { data: fetchedQuotes, refresh: refreshQuotes } = await useFetch<Quote[]>('/api/quotes')
 const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 
-// サーバーサイドで取得したデータを一時的に保持
-const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
-const initialAuthors = ref<Author[]>(fetchedAuthors.value || [])
-
 // quotes、isLoading、errorなどをrefとして定義（onMounted内で設定）
-const quotes = ref<Quote[]>(initialQuotes.value)
+const quotes = ref<Quote[]>(fetchedQuotes.value || [])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
@@ -134,7 +130,6 @@ watch(
   (newQuotes) => {
     if (newQuotes && newQuotes.length > 0) {
       quotes.value = [...newQuotes] as Quote[]
-      initialQuotes.value = [...newQuotes] as Quote[]
     }
   },
   { immediate: true }
@@ -143,8 +138,8 @@ watch(
 // 関数を定義
 const getAuthorName = (quote: Quote): string | undefined => {
   // SSRで取得したauthorsから検索
-  if (quote.authorId) {
-    const author = initialAuthors.value.find((a) => a.id === quote.authorId)
+  if (quote.authorId && fetchedAuthors.value) {
+    const author = fetchedAuthors.value.find((a) => a.id === quote.authorId)
     if (author) {
       return author.name
     }
@@ -176,44 +171,42 @@ const clearSearch = () => {
   }
 }
 
-const addQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>) => {
-  const response = await $fetch<Quote>('/api/quotes', {
+const createQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>) => {
+  await $fetch<Quote>('/api/quotes', {
     method: 'POST',
     body: quote,
   })
-  // quotesを更新
-  quotes.value = [...quotes.value, response]
-  initialQuotes.value = [...initialQuotes.value, response]
-  return response
+  // APIから最新データを再取得
+  await refreshQuotes()
+  if (fetchedQuotes.value) {
+    quotes.value = [...fetchedQuotes.value] as Quote[]
+  }
 }
 
 const updateQuote = async (
   id: string,
   updates: Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>
 ) => {
-  const response = await $fetch<Quote>(`/api/quotes/${id}`, {
+  await $fetch<Quote>(`/api/quotes/${id}`, {
     method: 'PUT',
     body: updates,
   })
-  // quotesを更新
-  const index = quotes.value.findIndex((q) => q.id === id)
-  if (index !== -1) {
-    quotes.value[index] = response
+  // APIから最新データを再取得
+  await refreshQuotes()
+  if (fetchedQuotes.value) {
+    quotes.value = [...fetchedQuotes.value] as Quote[]
   }
-  const initialIndex = initialQuotes.value.findIndex((q) => q.id === id)
-  if (initialIndex !== -1) {
-    initialQuotes.value[initialIndex] = response
-  }
-  return response
 }
 
 const removeQuote = async (id: string) => {
   await $fetch(`/api/quotes/${id}`, {
     method: 'DELETE',
   })
-  // quotesから削除
-  quotes.value = quotes.value.filter((q) => q.id !== id)
-  initialQuotes.value = initialQuotes.value.filter((q) => q.id !== id)
+  // APIから最新データを再取得
+  await refreshQuotes()
+  if (fetchedQuotes.value) {
+    quotes.value = [...fetchedQuotes.value] as Quote[]
+  }
 }
 
 const showAddForm = ref(false)
@@ -281,7 +274,7 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
     if (editingQuote.value) {
       await updateQuote(editingQuote.value.id, requestBody)
     } else {
-      await addQuote(requestBody)
+      await createQuote(requestBody)
     }
     resetForm()
   } catch (err) {

@@ -43,17 +43,6 @@ const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 // quotesをrefとして定義（初期値はuseFetchで取得したデータ）
 const quotes = ref<Quote[]>(fetchedQuotes.value || [])
 
-// fetchedQuotesが変更されたらquotesを更新
-watch(
-  fetchedQuotes,
-  (newQuotes) => {
-    if (newQuotes && newQuotes.length > 0) {
-      quotes.value = [...newQuotes] as Quote[]
-    }
-  },
-  { immediate: true }
-)
-
 const getAuthorName = (quote: Quote): string | undefined => {
   // SSRで取得したauthorsから検索
   if (quote.authorId && fetchedAuthors.value) {
