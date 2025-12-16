@@ -21,6 +21,7 @@
       >
         <div class="quoteContent">
           <p class="quoteText">{{ quote.text }}</p>
+          <p v-if="authorName" class="quoteAuthor">— {{ authorName }}</p>
           <div v-if="quote.tags && quote.tags.length > 0" class="tags">
             <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
           </div>
@@ -248,6 +249,13 @@ h1 {
   .quoteText {
     font-size: 1.125rem;
   }
+}
+
+.quoteAuthor {
+  text-align: right;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin-bottom: 0.5rem;
 }
 
 .tags {
