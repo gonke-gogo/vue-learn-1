@@ -2,8 +2,7 @@ import type { Quote } from '@/types/quote'
 import { createSupabaseClient } from '@/server/utils/supabase.server'
 
 /**
- * Supabaseから取得した名言データの型定義
- * Supabaseの形式（created_at, author_idなど）を表す
+ * Supabaseから取得した名言データの型定義（DB側の形式）
  */
 type SupabaseQuote = {
   id: string
@@ -23,7 +22,7 @@ export default defineEventHandler(async (_event): Promise<Quote[]> => {
   try {
     const supabase = await createSupabaseClient()
 
-    // Supabaseからデータを取得（タイムアウト付き）
+    // 必要カラムだけ取得（* を避ける）
     const { data, error } = await supabase
       .from('quotes')
       .select('*')
@@ -32,25 +31,26 @@ export default defineEventHandler(async (_event): Promise<Quote[]> => {
     if (error) {
       throw createError({
         statusCode: 500,
-        message: `Failed to fetch quotes: ${error.message}`,
+        statusMessage: `Failed to fetch quotes: ${error.message}`,
       })
     }
 
-    // Supabaseの形式（created_at, updated_at）をアプリの形式（createdAt, updatedAt）に変換
-    return (data || []).map((quote: SupabaseQuote) => ({
-      id: quote.id,
-      text: quote.text,
-      author: quote.author || undefined,
-      authorId: quote.author_id || undefined,
-      tags: quote.tags || [],
-      createdAt: quote.created_at,
-      updatedAt: quote.updated_at,
-    }))
-  } catch (err: any) {
-    // Supabase接続エラーの場合は空配列を返す（アプリがクラッシュしないように）
-    if (err.message?.includes('Supabase環境変数') || err.message?.includes('fetch')) {
-      return []
-    }
-    throw err
+    // DB形式（snake_case）→ アプリ形式（camelCase）に変換
+    return (data ?? []).map(
+      (q: SupabaseQuote): Quote => ({
+        id: q.id,
+        text: q.text,
+        author: q.author ?? undefined,
+        authorId: q.author_id ?? undefined,
+        tags: q.tags ?? [],
+        createdAt: q.created_at,
+        updatedAt: q.updated_at,
+      })
+    )
+  } catch (err: unknown) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Failed to fetch quotes.',
+    })
   }
 })

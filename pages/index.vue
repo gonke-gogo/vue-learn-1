@@ -32,49 +32,27 @@
 </template>
 
 <script setup lang="ts">
-import type { ComputedRef } from 'vue'
-import { nextTick } from 'vue'
-import { useQuotes } from '@/composables/useQuotes'
-import { useQuotesStore } from '@/stores/quotes'
 import { useSeededRandom } from '@/composables/useSeededRandom'
 import type { Quote } from '@/types/quote'
+import type { Author } from '@/types/author'
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
-
-// PiniaストアとuseQuotes()をrefで管理（SSR対応）
-const store = ref<ReturnType<typeof useQuotesStore> | null>(null)
-const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
-
-// サーバーサイドで取得したデータを一時的に保持
-const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
+const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 
 // quotesをrefとして定義（初期値はuseFetchで取得したデータ）
-// SSRとクライアントサイドで一貫性を保つため、確実にデータを設定
-const quotes = ref<Quote[]>(fetchedQuotes.value ? ([...fetchedQuotes.value] as Quote[]) : [])
+const quotes = ref<Quote[]>(fetchedQuotes.value || [])
 
-// fetchedQuotesが変更されたらquotesを更新
-// pickQuote()は後で定義されるため、ここでは呼び出さない
-watch(
-  fetchedQuotes,
-  (newQuotes) => {
-    if (newQuotes && newQuotes.length > 0) {
-      quotes.value = [...newQuotes] as Quote[]
-      initialQuotes.value = [...newQuotes] as Quote[]
+const getAuthorName = (quote: Quote): string | undefined => {
+  // SSRで取得したauthorsから検索
+  if (quote.authorId && fetchedAuthors.value) {
+    const author = fetchedAuthors.value.find((a) => a.id === quote.authorId)
+    if (author) {
+      return author.name
     }
-  },
-  { immediate: true }
-)
-
-const getAuthorName = (quote: Quote) => {
-  try {
-    if (quotesComposable.value) {
-      return quotesComposable.value.getAuthorName(quote)
-    }
-    return quote.author
-  } catch (error) {
-    return quote.author
   }
+  // フォールバック: quote.authorフィールドを使用
+  return quote.author
 }
 
 const selectedQuote = ref<Quote | null>(null)
@@ -128,131 +106,23 @@ function handleVisibilityChange() {
   }
 }
 
-onMounted(async () => {
-  // nextTickでDOMが準備されるまで待つ
-  await nextTick()
-
-  try {
-    // ストアとcomposableを初期化（クライアントサイドでのみ）
-    store.value = useQuotesStore()
-    quotesComposable.value = useQuotes()
-
-    // useFetchで取得したデータがストアにない場合、ストアから読み込む
-    // （persistedstateで既にデータが復元されている可能性があるため）
-    if (store.value && store.value.quotes.length === 0) {
-      // ストアにデータがない場合、loadQuotes()を呼び出す
-      await store.value.loadQuotes()
-    }
-
-    // quotesをcomputedに設定
-    const quotesComputed = computed(() => {
-      let result: any[] = []
-
-      try {
-        if (quotesComposable.value) {
-          const quotesRef = quotesComposable.value.quotes as unknown as ComputedRef<
-            readonly Quote[]
-          >
-          result = quotesRef.value as any[]
-        } else {
-          result = initialQuotes.value as any[]
-        }
-      } catch (error) {
-        result = initialQuotes.value as any[]
-      }
-
-      // 結果が空配列の場合、initialQuotesを使用
-      if (result.length === 0 && initialQuotes.value.length > 0) {
-        return initialQuotes.value as any[]
-      }
-
-      return result as any[]
-    })
-
-    // quotesComputedの値をwatchしてquotesを更新
-    // immediate: falseにして、DOM操作エラーを防ぐ
-    watch(
-      quotesComputed,
-      (newQuotes) => {
-        if (newQuotes.length > 0) {
-          // 新しい配列を作成して型を変換
-          const newQuotesArray = newQuotes.map((q) => ({
-            ...q,
-            tags: q.tags ? [...q.tags] : undefined,
-          })) as Quote[]
-          quotes.value = newQuotesArray
-        } else if (initialQuotes.value.length > 0 && quotes.value.length === 0) {
-          // 空配列の場合はinitialQuotesを使用（quotesが空の場合のみ）
-          quotes.value = initialQuotes.value.map((q) => ({
-            ...q,
-            tags: q.tags ? [...q.tags] : undefined,
-          })) as Quote[]
-        }
-      },
-      { immediate: false }
-    )
-
-    // 最初の更新をnextTickで実行（DOMが準備された後）
-    await nextTick()
-    if (initialQuotes.value.length > 0 && quotes.value.length === 0) {
-      quotes.value = initialQuotes.value.map((q) => ({
-        ...q,
-        tags: q.tags ? [...q.tags] : undefined,
-      })) as Quote[]
-    }
-
-    // watchをonMounted内で設定（Piniaが初期化された後）
-    watch(
-      quotes,
-      () => {
-        if (quotes.value.length > 0) {
-          // quotesが変更されたときも、ランダムなsaltで選ぶ
-          salt.value = Math.floor(Math.random() * 10000)
-          pickQuote()
-        }
-      },
-      { immediate: true }
-    )
-
-    // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
-    // fetchedQuotesがある場合は、quotesを更新してからpickQuote()を呼び出す
-    if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
-      quotes.value = [...fetchedQuotes.value] as Quote[]
-      initialQuotes.value = [...fetchedQuotes.value] as Quote[]
-    } else if (initialQuotes.value.length > 0) {
-      // quotesが空でもinitialQuotesがある場合は、quotesを更新
-      quotes.value = initialQuotes.value
-    }
-
-    // quotesにデータがあることを確認してからpickQuote()を呼び出す
-    // nextTickで待ってから実行（quotesの更新が反映された後）
-    await nextTick()
-
-    // quotesが更新されたことを確認してからpickQuote()を呼び出す
+// quotesが変更されたらランダムに名言を選ぶ
+watch(
+  quotes,
+  () => {
     if (quotes.value.length > 0) {
-      pickQuote()
-    } else {
-      // quotesが空の場合、もう一度nextTickで待つ
-      await nextTick()
-      if (quotes.value.length > 0) {
-        pickQuote()
-      }
-    }
-
-    // 可視状態に応じて自動切替を開始/停止
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    if (!document.hidden) startAutoRotate()
-  } catch (error) {
-    // エラーが発生した場合でも、initialQuotesを使用してquotesを更新
-    if (initialQuotes.value.length > 0) {
-      quotes.value = initialQuotes.value as Quote[]
-    }
-    // quotesにデータがある場合はpickQuote()を呼び出す
-    await nextTick()
-    if (quotes.value.length > 0) {
+      // quotesが変更されたときも、ランダムなsaltで選ぶ
+      salt.value = Math.floor(Math.random() * 10000)
       pickQuote()
     }
-  }
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  // 可視状態に応じて自動切替を開始/停止
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  if (!document.hidden) startAutoRotate()
 })
 
 onBeforeUnmount(() => {

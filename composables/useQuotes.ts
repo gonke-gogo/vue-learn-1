@@ -1,6 +1,5 @@
 import { computed } from 'vue'
 import { useQuotesStore } from '@/stores/quotes'
-import { useAuthorsStore } from '@/stores/authors'
 import type { Quote } from '@/types/quote'
 import {
   searchQuotes as searchQuotesUtil,
@@ -10,7 +9,6 @@ import {
 
 export function useQuotes() {
   const store = useQuotesStore()
-  const authorsStore = useAuthorsStore()
 
   const searchQuotes = (query: string): Quote[] => {
     return searchQuotesUtil([...store.quotes] as Quote[], query)
@@ -22,15 +20,6 @@ export function useQuotes() {
 
   const sortQuotes = (quotes: Quote[], order: 'asc' | 'desc' = 'desc'): Quote[] => {
     return sortQuotesUtil(quotes, order)
-  }
-
-  // 名言から著者名を取得（authorId優先、なければauthorフィールド）
-  const getAuthorName = (quote: Quote): string | undefined => {
-    if (quote.authorId) {
-      const author = authorsStore.getAuthor(quote.authorId)
-      return author?.name
-    }
-    return quote.author
   }
 
   return {
@@ -45,6 +34,5 @@ export function useQuotes() {
     searchQuotes,
     filterByTags,
     sortQuotes,
-    getAuthorName,
   }
 }

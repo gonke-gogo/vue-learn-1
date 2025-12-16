@@ -29,7 +29,7 @@
           @change="updateAuthorId"
         >
           <option value="">著者を選択（任意）</option>
-          <option v-for="author in authors" :key="author.id" :value="author.id">
+          <option v-for="author in authors || []" :key="author.id" :value="author.id">
             {{ author.name }}
           </option>
         </select>
@@ -69,9 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ComputedRef } from 'vue'
-import { watch, nextTick } from 'vue'
-import { useAuthors } from '@/composables/useAuthors'
+import { watch } from 'vue'
 import type { Author } from '@/types/author'
 
 // Props定義
@@ -90,9 +88,10 @@ const props = withDefaults(defineProps<Props>(), {
   isLoading: false,
 })
 
-// authorsComposableをrefで管理（SSR対応）
-const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
-const authors = ref<Author[]>([])
+// 著者一覧をuseFetchで直接取得（シンプルに）
+const { data: authors } = await useFetch<Author[]>('/api/authors', {
+  default: () => [],
+})
 
 // Event定義
 const emit = defineEmits<{
@@ -192,13 +191,7 @@ watch(
 
       // 著者IDが変更された場合
       if (oldValue.authorId !== newValue.authorId) {
-        // 著者IDが変更された場合、著者一覧を再読み込み（必要に応じて）
-        if (newValue.authorId && !oldValue.authorId) {
-          const authors = authorsComposable.value
-          if (authors) {
-            authors.loadAuthors()
-          }
-        }
+        // 著者IDが変更された場合の処理（必要に応じて追加）
       }
 
       // タグが変更された場合
@@ -213,69 +206,7 @@ watch(
 )
 
 // data-form-mode属性とdata-form-action属性を使った例：コンポーネントマウント時に属性を読み取る
-onMounted(async () => {
-  // Piniaが初期化されるまで待つ
-  await nextTick()
-
-  // Piniaが初期化されるまで待つ（最大20回、50ms間隔）
-  // eslint-disable-next-line no-undef
-  const nuxtApp = useNuxtApp()
-  let retryCount = 0
-  while (!nuxtApp.$pinia && retryCount < 20) {
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    retryCount++
-  }
-
-  // composableを初期化（クライアントサイドでのみ）
-  if (!nuxtApp.$pinia) {
-    // Piniaが初期化されていない場合、APIから直接取得
-    try {
-      const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
-      if (fetchedAuthors.value && fetchedAuthors.value.length > 0) {
-        authors.value = fetchedAuthors.value
-      }
-    } catch (fetchErr) {
-      // エラーは無視して続行
-    }
-    return
-  }
-
-  try {
-    authorsComposable.value = useAuthors()
-
-    // authorsをwatchで更新
-    if (authorsComposable.value) {
-      watch(
-        () => {
-          if (!authorsComposable.value) return []
-          const authorsRef = authorsComposable.value.authors as unknown as ComputedRef<
-            readonly Author[]
-          >
-          return authorsRef.value || []
-        },
-        (newAuthors) => {
-          if (newAuthors && Array.isArray(newAuthors)) {
-            authors.value = [...newAuthors] as Author[]
-          }
-        },
-        { immediate: true }
-      )
-
-      // 著者一覧を読み込む
-      await authorsComposable.value.loadAuthors()
-    }
-  } catch (err) {
-    // エラーが発生した場合、APIから直接取得
-    try {
-      const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
-      if (fetchedAuthors.value && fetchedAuthors.value.length > 0) {
-        authors.value = fetchedAuthors.value
-      }
-    } catch (fetchErr) {
-      // エラーは無視して続行
-    }
-  }
-
+onMounted(() => {
   // DOM要素を取得してdata-form-mode属性を読み取る
   const formCardElement = document.querySelector('.formCard') as HTMLElement
   if (formCardElement) {

@@ -61,13 +61,11 @@
           v-else
           class="quoteItem"
           :[dynamicAttr]="quote.id"
-          @[dynamicEvent]="handleQuoteClick(quote as Quote)"
+          @[dynamicEvent]="handleQuoteClick(quote)"
         >
           <div class="quoteContent">
             <p class="quoteText">{{ quote.text }}</p>
-            <p v-if="getAuthorName(quote as Quote)" class="quoteAuthor">
-              — {{ getAuthorName(quote as Quote) }}
-            </p>
+            <p v-if="getAuthorName(quote)" class="quoteAuthor">— {{ getAuthorName(quote) }}</p>
             <div v-if="quote.tags && quote.tags.length > 0" class="tags">
               <span v-for="tag in quote.tags" :key="tag" class="tag">{{ tag }}</span>
             </div>
@@ -77,7 +75,7 @@
           </div>
           <div class="quoteActions">
             <NuxtLink :to="`/quotes/${quote.id}`" class="buttonSmall" @click.stop> 詳細 </NuxtLink>
-            <button class="buttonSmall" @click.stop="startEdit(quote as Quote)">編集</button>
+            <button class="buttonSmall" @click.stop="startEdit(quote)">編集</button>
             <button class="buttonSmall buttonDanger" @click.stop="handleDelete(quote.id)">
               削除
             </button>
@@ -92,27 +90,23 @@
 import { computed, watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSearchStore } from '@/stores/search'
-import { useAuthors } from '@/composables/useAuthors'
-import { seedQuotes } from '@/data/seed-quotes'
 import type { Quote } from '@/types/quote'
+import type { Author } from '@/types/author'
 import { searchQuotes as searchQuotesUtil } from '@/utils/quote-utils'
 
 const route = useRoute()
 
-// 検索ストアとcomposableをrefで管理（SSR対応）
+// 検索ストアを管理（SSR対応）
 const searchStore = useSearchStore()
-const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
 
 const { searchQuery, activeSearchQuery } = storeToRefs(searchStore)
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes, refresh: refreshQuotes } = await useFetch<Quote[]>('/api/quotes')
-
-// サーバーサイドで取得したデータを一時的に保持
-const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
+const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 
 // quotes、isLoading、errorなどをrefとして定義（onMounted内で設定）
-const quotes = ref<Quote[]>(initialQuotes.value)
+const quotes = ref<Quote[]>(fetchedQuotes.value || [])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
@@ -136,7 +130,6 @@ watch(
   (newQuotes) => {
     if (newQuotes && newQuotes.length > 0) {
       quotes.value = [...newQuotes] as Quote[]
-      initialQuotes.value = [...newQuotes] as Quote[]
     }
   },
   { immediate: true }
@@ -144,10 +137,14 @@ watch(
 
 // 関数を定義
 const getAuthorName = (quote: Quote): string | undefined => {
-  if (quote.authorId && authorsComposable.value) {
-    const author = authorsComposable.value.getAuthor(quote.authorId)
-    return author?.name
+  // SSRで取得したauthorsから検索
+  if (quote.authorId && fetchedAuthors.value) {
+    const author = fetchedAuthors.value.find((a) => a.id === quote.authorId)
+    if (author) {
+      return author.name
+    }
   }
+  // フォールバック: quote.authorフィールドを使用
   return quote.author
 }
 
@@ -174,52 +171,42 @@ const clearSearch = () => {
   }
 }
 
-const addQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>) => {
-  const response = await $fetch<Quote>('/api/quotes', {
+const createQuote = async (quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>) => {
+  await $fetch<Quote>('/api/quotes', {
     method: 'POST',
     body: quote,
   })
-  // quotesを更新
-  quotes.value = [...quotes.value, response]
-  initialQuotes.value = [...initialQuotes.value, response]
-  return response
+  // APIから最新データを再取得
+  await refreshQuotes()
+  if (fetchedQuotes.value) {
+    quotes.value = [...fetchedQuotes.value] as Quote[]
+  }
 }
 
 const updateQuote = async (
   id: string,
   updates: Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>
 ) => {
-  const response = await $fetch<Quote>(`/api/quotes/${id}`, {
+  await $fetch<Quote>(`/api/quotes/${id}`, {
     method: 'PUT',
     body: updates,
   })
-  // quotesを更新
-  const index = quotes.value.findIndex((q) => q.id === id)
-  if (index !== -1) {
-    quotes.value[index] = response
+  // APIから最新データを再取得
+  await refreshQuotes()
+  if (fetchedQuotes.value) {
+    quotes.value = [...fetchedQuotes.value] as Quote[]
   }
-  const initialIndex = initialQuotes.value.findIndex((q) => q.id === id)
-  if (initialIndex !== -1) {
-    initialQuotes.value[initialIndex] = response
-  }
-  return response
 }
 
 const removeQuote = async (id: string) => {
   await $fetch(`/api/quotes/${id}`, {
     method: 'DELETE',
   })
-  // quotesから削除
-  quotes.value = quotes.value.filter((q) => q.id !== id)
-  initialQuotes.value = initialQuotes.value.filter((q) => q.id !== id)
-}
-
-// 関数を定義（現在は未使用だが、将来の使用に備えて定義）
-const _getOrCreateAuthorByName = async (name: string) => {
-  if (authorsComposable.value) {
-    return await authorsComposable.value.getOrCreateAuthorByName(name)
+  // APIから最新データを再取得
+  await refreshQuotes()
+  if (fetchedQuotes.value) {
+    quotes.value = [...fetchedQuotes.value] as Quote[]
   }
-  throw new Error('authorsComposable is not initialized')
 }
 
 const showAddForm = ref(false)
@@ -229,10 +216,8 @@ const editingQuote = ref<Quote | null>(null)
 // 動的属性名: data-quote-id属性を動的に設定
 const dynamicAttr = ref('data-quote-id')
 // 動的イベント名: タッチデバイスかどうかでイベントを切り替え（実行時に動的に決定）
-const dynamicEvent = computed(() => {
-  // タッチデバイスの場合はタッチイベント、それ以外はダブルクリック
-  return 'ontouchstart' in window ? 'touchstart' : 'dblclick'
-})
+const dynamicEvent =
+  typeof window !== 'undefined' && 'ontouchstart' in window ? 'touchstart' : 'dblclick'
 
 // フォームの値（双方向バインディング用）
 // refを使った例：v-modelがそのまま使える
@@ -289,7 +274,7 @@ async function handleSubmit(formValue: { text: string; authorId?: string; tags?:
     if (editingQuote.value) {
       await updateQuote(editingQuote.value.id, requestBody)
     } else {
-      await addQuote(requestBody)
+      await createQuote(requestBody)
     }
     resetForm()
   } catch (err) {
@@ -308,93 +293,9 @@ async function handleDelete(id: string) {
 }
 
 onMounted(async () => {
-  try {
-    authorsComposable.value = useAuthors()
-  } catch (err) {
-    // エラーは無視して続行
-    return
-  }
-
   // サーバーサイドで取得したデータをquotesに反映
   if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
     quotes.value = fetchedQuotes.value
-  }
-
-  // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
-
-  // 既存データでauthorはあるがauthorIdがnullのものを修正
-  const quotesToMigrate = quotes.value.filter((quote) => quote.author && !quote.authorId)
-  if (quotesToMigrate.length > 0 && authorsComposable.value) {
-    for (const quote of quotesToMigrate) {
-      if (!quote.author) continue
-      try {
-        // 著者を取得または作成
-        const author = await authorsComposable.value.getOrCreateAuthorByName(quote.author)
-        // 名言にauthorIdを設定（サーバー側で自動的にauthorフィールドも更新される）
-        await updateQuote(quote.id, {
-          authorId: author.id,
-        })
-      } catch (err) {
-        // エラーは無視して続行
-      }
-    }
-    // データを再取得
-    await refreshQuotes()
-    if (fetchedQuotes.value) {
-      quotes.value = fetchedQuotes.value
-      initialQuotes.value = fetchedQuotes.value
-    }
-  }
-
-  // 既存データでauthorIdはあるがauthorがnullのものを修正
-  const quotesToFixAuthor = quotes.value.filter((quote) => quote.authorId && !quote.author)
-  if (quotesToFixAuthor.length > 0) {
-    for (const quote of quotesToFixAuthor) {
-      if (!quote.authorId) continue
-      try {
-        // authorIdを再設定することで、サーバー側で自動的にauthorフィールドも更新される
-        await updateQuote(quote.id, {
-          authorId: quote.authorId,
-        })
-      } catch (err) {
-        // エラーは無視して続行
-      }
-    }
-    // データを再取得
-    await refreshQuotes()
-    if (fetchedQuotes.value) {
-      quotes.value = fetchedQuotes.value
-      initialQuotes.value = fetchedQuotes.value
-    }
-  }
-
-  if (quotes.value.length === 0 && authorsComposable.value) {
-    // 初期データを投入（クライアントサイドでのみ）
-    const authors = authorsComposable.value
-    for (const seed of seedQuotes) {
-      try {
-        // author文字列からauthorIdを取得または作成
-        let authorId: string | undefined = undefined
-        if (seed.author) {
-          const author = await authors.getOrCreateAuthorByName(seed.author)
-          authorId = author.id
-        }
-
-        // authorIdを含めて名言を追加
-        await addQuote({
-          ...seed,
-          authorId,
-        })
-      } catch (err) {
-        // エラーは無視して続行
-      }
-    }
-    // データを再取得
-    await refreshQuotes()
-    if (fetchedQuotes.value) {
-      quotes.value = fetchedQuotes.value
-      initialQuotes.value = fetchedQuotes.value
-    }
   }
 
   // 編集モードのクエリパラメータをチェック
@@ -402,7 +303,7 @@ onMounted(async () => {
   if (editId) {
     const quote = quotes.value.find((q) => q.id === editId)
     if (quote) {
-      startEdit(quote as Quote)
+      startEdit(quote)
     }
   }
 })

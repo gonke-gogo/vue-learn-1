@@ -57,12 +57,14 @@ import { nextTick, watch } from 'vue'
 import { useQuotes } from '@/composables/useQuotes'
 import { useQuotesStore } from '@/stores/quotes'
 import type { Quote } from '@/types/quote'
+import type { Author } from '@/types/author'
 
 const route = useRoute()
 const router = useRouter()
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
 const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
 
 // PiniaストアとuseQuotes()をrefで管理（SSR対応）
 const store = ref<ReturnType<typeof useQuotesStore> | null>(null)
@@ -70,6 +72,7 @@ const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
 
 // サーバーサイドで取得したデータを一時的に保持
 const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
+const initialAuthors = ref<Author[]>(fetchedAuthors.value || [])
 
 // quote、isLoading、errorなどをrefとして定義（onMounted内で設定）
 const quote = ref<Quote | null>(null)
@@ -106,9 +109,14 @@ const removeQuote = async (id: string) => {
 }
 
 const getAuthorName = (quote: Quote): string | undefined => {
-  if (quotesComposable.value) {
-    return quotesComposable.value.getAuthorName(quote)
+  // SSRで取得したauthorsから検索
+  if (quote.authorId) {
+    const author = initialAuthors.value.find((a) => a.id === quote.authorId)
+    if (author) {
+      return author.name
+    }
   }
+  // フォールバック: quote.authorフィールドを使用
   return quote.author
 }
 
