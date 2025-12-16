@@ -71,9 +71,9 @@ describe('LocalQuoteRepository', () => {
     })
 
     it('存在しないIDでエラーを投げる', async () => {
-      await expect(
-        repository.update('non-existent-id', { text: '更新' })
-      ).rejects.toThrow(RepositoryError)
+      await expect(repository.update('non-existent-id', { text: '更新' })).rejects.toThrow(
+        RepositoryError
+      )
     })
   })
 
@@ -122,4 +122,3 @@ describe('LocalQuoteRepository', () => {
     })
   })
 })
-
