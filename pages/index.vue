@@ -7,26 +7,35 @@
     </div>
 
     <div v-else>
-      <div v-if="selectedQuote" class="quoteCard" :[quoteIdAttr]="selectedQuote.id">
-        <p class="quoteText">{{ selectedQuote.text }}</p>
-        <p v-if="getAuthorName(selectedQuote)" class="quoteAuthor">
-          — {{ getAuthorName(selectedQuote) }}
-        </p>
-        <div v-if="selectedQuote.tags && selectedQuote.tags.length > 0" class="tags">
-          <span v-for="tag in selectedQuote.tags" :key="tag" class="tag">{{ tag }}</span>
-        </div>
-      </div>
+      <ClientOnly>
+        <template #default>
+          <div v-if="selectedQuote" class="quoteCard" :[quoteIdAttr]="selectedQuote.id">
+            <p class="quoteText">{{ selectedQuote.text }}</p>
+            <p v-if="getAuthorName(selectedQuote)" class="quoteAuthor">
+              — {{ getAuthorName(selectedQuote) }}
+            </p>
+            <div v-if="selectedQuote.tags && selectedQuote.tags.length > 0" class="tags">
+              <span v-for="tag in selectedQuote.tags" :key="tag" class="tag">{{ tag }}</span>
+            </div>
+          </div>
 
-      <div class="actions">
-        <button class="button" @click="pickNext">次の候補</button>
-        <NuxtLink
-          v-if="selectedQuote"
-          :to="`/quotes/${selectedQuote.id}`"
-          class="button buttonSecondary"
-        >
-          詳細を見る
-        </NuxtLink>
-      </div>
+          <div class="actions">
+            <button class="button" @click="pickNext">次の候補</button>
+            <NuxtLink
+              v-if="selectedQuote"
+              :to="`/quotes/${selectedQuote.id}`"
+              class="button buttonSecondary"
+            >
+              詳細を見る
+            </NuxtLink>
+          </div>
+        </template>
+        <template #fallback>
+          <div class="quoteCard">
+            <p class="quoteText">読み込み中...</p>
+          </div>
+        </template>
+      </ClientOnly>
     </div>
   </div>
 </template>
