@@ -107,13 +107,6 @@ function handleVisibilityChange() {
   }
 }
 
-// quotesが変更されたら名言を選ぶ（クライアント側でのみ実行）
-watch(quotes, () => {
-  if (quotes.value.length > 0) {
-    pickQuote()
-  }
-})
-
 onMounted(() => {
   // クライアント側でのみランダム値を生成
   // リロードするたびに違う名言が表示されるように、saltの値をランダムにする
