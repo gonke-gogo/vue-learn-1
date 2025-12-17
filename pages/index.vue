@@ -56,8 +56,9 @@ const getAuthorName = (quote: Quote): string | undefined => {
 }
 
 const selectedQuote = ref<Quote | null>(null)
-// リロードするたびに違う名言が表示されるように、saltの初期値をランダムにする
-const salt = ref(Math.floor(Math.random() * 10000))
+// SSRとCSRで同じ値になるように、初期値は0に設定
+// クライアント側でのみランダム値を生成する（onMountedで設定）
+const salt = ref(0)
 
 // 動的引数の例
 // 名言IDを動的属性として設定（テスト・デバッグ用）
@@ -106,20 +107,21 @@ function handleVisibilityChange() {
   }
 }
 
-// quotesが変更されたらランダムに名言を選ぶ
-watch(
-  quotes,
-  () => {
-    if (quotes.value.length > 0) {
-      // quotesが変更されたときも、ランダムなsaltで選ぶ
-      salt.value = Math.floor(Math.random() * 10000)
-      pickQuote()
-    }
-  },
-  { immediate: true }
-)
+// quotesが変更されたら名言を選ぶ（クライアント側でのみ実行）
+watch(quotes, () => {
+  if (quotes.value.length > 0) {
+    pickQuote()
+  }
+})
 
 onMounted(() => {
+  // クライアント側でのみランダム値を生成
+  // リロードするたびに違う名言が表示されるように、saltの値をランダムにする
+  if (quotes.value.length > 0) {
+    salt.value = Math.floor(Math.random() * 10000)
+    pickQuote()
+  }
+
   // 可視状態に応じて自動切替を開始/停止
   document.addEventListener('visibilitychange', handleVisibilityChange)
   if (!document.hidden) startAutoRotate()
