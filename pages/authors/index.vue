@@ -6,7 +6,7 @@
     </div>
 
     <div v-if="isLoading" class="loading">読み込み中...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
+    <div v-else-if="error" class="error">{{ error.message || 'エラーが発生しました' }}</div>
     <div v-else-if="authorsWithCount.length === 0" class="emptyState">
       <p>著者が登録されていません</p>
       <NuxtLink to="/quotes" class="button">名言を追加する</NuxtLink>
@@ -33,91 +33,32 @@
 </template>
 
 <script setup lang="ts">
-import type { ComputedRef } from 'vue'
-import { computed, nextTick, watch } from 'vue'
-import { useQuotes } from '@/composables/useQuotes'
-import { useAuthors } from '@/composables/useAuthors'
-import { useQuotesStore } from '@/stores/quotes'
-import { useAuthorsStore } from '@/stores/authors'
+import { computed } from 'vue'
 import type { Quote } from '@/types/quote'
 import type { Author } from '@/types/author'
 
 const router = useRouter()
 
 // サーバーサイドでもデータを取得（ユニバーサルレンダリング対応）
-const { data: fetchedQuotes } = await useFetch<Quote[]>('/api/quotes')
+const { data: fetchedQuotes, pending: isLoading, error } = await useFetch<Quote[]>('/api/quotes')
 const { data: fetchedAuthors } = await useFetch<Author[]>('/api/authors')
-
-// Piniaストアとcomposablesをrefで管理（SSR対応）
-const quotesStore = ref<ReturnType<typeof useQuotesStore> | null>(null)
-const authorsStore = ref<ReturnType<typeof useAuthorsStore> | null>(null)
-const quotesComposable = ref<ReturnType<typeof useQuotes> | null>(null)
-const authorsComposable = ref<ReturnType<typeof useAuthors> | null>(null)
-
-// サーバーサイドで取得したデータを一時的に保持
-const initialQuotes = ref<Quote[]>(fetchedQuotes.value || [])
-const initialAuthors = ref<Author[]>(fetchedAuthors.value || [])
-
-// quotes、authors、isLoading、errorなどをrefとして定義（onMounted内で設定）
-const quotes = ref<Quote[]>(initialQuotes.value)
-const authors = ref<Author[]>(initialAuthors.value)
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-
-// 関数を定義（onMounted内で更新）
-const updateQuote = async (
-  id: string,
-  updates: Partial<Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>>
-) => {
-  if (quotesComposable.value) {
-    return await quotesComposable.value.updateQuote(id, updates)
-  }
-  throw new Error('quotesComposable is not initialized')
-}
-
-const getOrCreateAuthorByName = async (name: string): Promise<Author> => {
-  if (authorsComposable.value) {
-    return await authorsComposable.value.getOrCreateAuthorByName(name)
-  }
-  throw new Error('authorsComposable is not initialized')
-}
-
-// fetchedQuotesが変更されたらquotesを更新
-watch(
-  fetchedQuotes,
-  (newQuotes) => {
-    if (newQuotes && newQuotes.length > 0) {
-      quotes.value = [...newQuotes] as Quote[]
-      initialQuotes.value = [...newQuotes] as Quote[]
-    }
-  },
-  { immediate: true }
-)
-
-// fetchedAuthorsが変更されたらauthorsを更新
-watch(
-  fetchedAuthors,
-  (newAuthors) => {
-    if (newAuthors && newAuthors.length > 0) {
-      authors.value = [...newAuthors] as Author[]
-      initialAuthors.value = [...newAuthors] as Author[]
-    }
-  },
-  { immediate: true }
-)
 
 // 著者ごとの名言数を計算
 const authorsWithCount = computed(() => {
+  if (!fetchedQuotes.value || !fetchedAuthors.value) {
+    return []
+  }
+
   const quoteCountMap = new Map<string, number>()
 
-  quotes.value.forEach((quote) => {
+  fetchedQuotes.value.forEach((quote) => {
     if (quote.authorId) {
       const count = quoteCountMap.get(quote.authorId) || 0
       quoteCountMap.set(quote.authorId, count + 1)
     }
   })
 
-  return authors.value
+  return fetchedAuthors.value
     .map((author) => ({
       ...author,
       quoteCount: quoteCountMap.get(author.id) || 0,
@@ -129,198 +70,6 @@ const authorsWithCount = computed(() => {
 function navigateToAuthorQuotes(authorId: string) {
   router.push(`/authors/${authorId}/quotes`)
 }
-
-// 名言から著者を自動生成する処理
-async function migrateAuthorsFromQuotes() {
-  // author文字列があるがauthorIdがない名言を探す
-  const quotesToMigrate = quotes.value.filter((quote) => quote.author && !quote.authorId)
-
-  if (quotesToMigrate.length === 0) {
-    return // 移行不要
-  }
-
-  // 各名言のauthor文字列から著者を作成または取得し、authorIdを設定
-  for (const quote of quotesToMigrate) {
-    if (!quote.author) continue
-
-    try {
-      // 著者を取得または作成
-      const author = await getOrCreateAuthorByName(quote.author)
-
-      // 名言にauthorIdを設定
-      await updateQuote(quote.id, {
-        authorId: author.id,
-      })
-    } catch (err) {
-      // エラーは無視して続行
-    }
-  }
-}
-
-onMounted(async () => {
-  // Piniaが初期化されるまで待つ
-  await nextTick()
-
-  // Piniaが初期化されるまで待つ（最大20回、50ms間隔）
-  // eslint-disable-next-line no-undef
-  const nuxtApp = useNuxtApp()
-  let retryCount = 0
-  while (!nuxtApp.$pinia && retryCount < 20) {
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    retryCount++
-  }
-
-  // ストアとcomposableを初期化（クライアントサイドでのみ）
-  if (!nuxtApp.$pinia) {
-    return
-  }
-
-  try {
-    quotesStore.value = useQuotesStore()
-    authorsStore.value = useAuthorsStore()
-    quotesComposable.value = useQuotes()
-    authorsComposable.value = useAuthors()
-
-    // quotes、authors、isLoading、errorをwatchで更新
-    if (quotesComposable.value) {
-      // quotesをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return []
-          const quotesRef = quotesComposable.value.quotes as unknown as ComputedRef<
-            readonly Quote[]
-          >
-          return quotesRef.value
-        },
-        (newQuotes) => {
-          if (newQuotes && newQuotes.length > 0) {
-            quotes.value = [...newQuotes] as Quote[]
-          }
-        },
-        { immediate: true }
-      )
-
-      // isLoadingをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return false
-          const isLoadingRef = quotesComposable.value.isLoading as unknown as ComputedRef<boolean>
-          return isLoadingRef.value
-        },
-        (newIsLoading) => {
-          isLoading.value = newIsLoading
-        },
-        { immediate: true }
-      )
-
-      // errorをwatch
-      watch(
-        () => {
-          if (!quotesComposable.value) return null
-          const errorRef = quotesComposable.value.error as unknown as ComputedRef<string | null>
-          return errorRef.value
-        },
-        (newError) => {
-          error.value = newError
-        },
-        { immediate: true }
-      )
-    }
-
-    if (authorsComposable.value) {
-      // authorsをwatch
-      watch(
-        () => {
-          if (!authorsComposable.value) return []
-          const authorsRef = authorsComposable.value.authors as unknown as ComputedRef<
-            readonly Author[]
-          >
-          return authorsRef.value
-        },
-        (newAuthors) => {
-          if (newAuthors && newAuthors.length > 0) {
-            authors.value = [...newAuthors] as Author[]
-          }
-        },
-        { immediate: true }
-      )
-
-      // isLoadingをwatch（authorsComposableのisLoadingも考慮）
-      watch(
-        () => {
-          if (!authorsComposable.value) return false
-          const isLoadingRef = authorsComposable.value.isLoading as unknown as ComputedRef<boolean>
-          return isLoadingRef.value
-        },
-        (newIsLoading) => {
-          if (newIsLoading) {
-            isLoading.value = newIsLoading
-          }
-        },
-        { immediate: true }
-      )
-
-      // errorをwatch（authorsComposableのerrorも考慮）
-      watch(
-        () => {
-          if (!authorsComposable.value) return null
-          const errorRef = authorsComposable.value.error as unknown as ComputedRef<string | null>
-          return errorRef.value
-        },
-        (newError) => {
-          if (newError) {
-            error.value = newError
-          }
-        },
-        { immediate: true }
-      )
-    }
-
-    // サーバーサイドで取得したデータをquotesとauthorsに反映
-    if (fetchedQuotes.value && fetchedQuotes.value.length > 0) {
-      quotes.value = fetchedQuotes.value
-    }
-    if (fetchedAuthors.value && fetchedAuthors.value.length > 0) {
-      authors.value = fetchedAuthors.value
-    }
-
-    // quotesが空の場合、ストアから読み込む
-    const quotesStoreInstance = quotesStore.value
-    if (
-      quotesStoreInstance &&
-      quotesStoreInstance.quotes.length === 0 &&
-      quotes.value.length === 0
-    ) {
-      await quotesStoreInstance.loadQuotes()
-    }
-
-    // authorsが空の場合、ストアから読み込む
-    const authorsStoreInstance = authorsStore.value
-    if (authorsStoreInstance && authors.value.length === 0) {
-      await authorsStoreInstance.loadAuthors()
-    }
-
-    // クライアントサイドでのみ実行（サーバーサイドでは既にデータを取得済み）
-    // 著者がいない場合、名言から著者を自動生成
-    if (authors.value.length === 0 && quotes.value.length > 0) {
-      await migrateAuthorsFromQuotes()
-      // 著者データを再取得
-      const { data: refreshedAuthors } = await useFetch<Author[]>('/api/authors')
-      if (refreshedAuthors.value) {
-        authors.value = refreshedAuthors.value
-        initialAuthors.value = refreshedAuthors.value
-      }
-    }
-  } catch (err) {
-    // エラーが発生した場合でも、initialQuotesとinitialAuthorsを使用
-    if (initialQuotes.value.length > 0) {
-      quotes.value = initialQuotes.value
-    }
-    if (initialAuthors.value.length > 0) {
-      authors.value = initialAuthors.value
-    }
-  }
-})
 </script>
 
 <style scoped lang="scss">
